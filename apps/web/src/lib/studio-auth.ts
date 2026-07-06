@@ -48,6 +48,7 @@ export const studioRoleGroups = {
   contentEditors: ["owner", "admin", "editor", "designer"],
   menuImporters: ["owner", "admin", "editor"],
   renderOperators: ["owner", "admin", "editor", "designer", "publisher"],
+  approvers: ["owner", "admin", "approver"],
   screenManagers: ["owner", "admin", "publisher"]
 } satisfies Record<string, readonly StudioAccessRole[]>;
 

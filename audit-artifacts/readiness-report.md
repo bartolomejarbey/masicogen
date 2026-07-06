@@ -11,7 +11,7 @@ This report is intentionally critical. A passing build is not treated as proof t
 ## Gate Summary
 
 - open: 0
-- partial: 11
+- partial: 12
 - passing: 9
 
 ## Findings
@@ -36,9 +36,9 @@ This report is intentionally critical. A passing build is not treated as proof t
 
 - Category: Schvalovani
 - Status: partial
-- Evidence: Shared evaluatePublishReadiness blokuje publish bez content/layout/export potvrzeni a migrace 202607060003 pridava approve_menu_version, approve_deck_version a publish_deck_to_screen RPC s audit_log zapisem.
-- Impact: Systém uz ma konkretni control point pro lidske schvaleni, ale personal ho zatim nevola pres Supabase Auth UI a DB integrační test.
-- Next action: Napojit Supabase session do UI, zavolat RPC pres server action, pridat role/cross-org/publish rollback testy.
+- Evidence: Shared evaluatePublishReadiness blokuje publish bez content/layout/export potvrzeni, migrace 202607060003 pridava approve_menu_version, approve_deck_version a publish_deck_to_screen RPC s audit_log zapisem a route handlery /api/approvals/* plus /api/screens/[screenId]/publish je volaji pres Supabase Auth.
+- Impact: Systém uz ma konkretni control point pro lidske schvaleni a produkcni API mutace, ale personal je zatim nema napojene z UI a chybi DB integrační test.
+- Next action: Napojit UI akce na approval/publish route handlery, pridat role/cross-org/publish rollback testy a overit player manifest po publish eventu.
 
 ### P0 - Worker umi persistovat final MP4 export, ale publish UI/DB smoke stale chybi
 
@@ -116,7 +116,7 @@ This report is intentionally critical. A passing build is not treated as proof t
 
 - Status: partial
 - Owner: Security
-- Evidence: requireStudioApiAccess chrání chat/upload/render/pair/export/import, role skupiny blokují viewer u mutací, menu import nepovoluje designer roli a produkční orgId se bere ze session; chybí DB integrační testy.
+- Evidence: requireStudioApiAccess chrání chat/upload/render/pair/export/import/approval/publish, role skupiny blokují viewer u mutací, menu import nepovoluje designer roli, approval je oddeleny od editace a produkční orgId se bere ze session; chybí DB integrační testy.
 
 ### Produkční studio stránky bez session neukazují demo shell
 
@@ -208,6 +208,12 @@ This report is intentionally critical. A passing build is not treated as proof t
 - Owner: Menu spine
 - Evidence: /api/menus/import-text vola import_text_menu_version RPC pro menu_sources, menus, menu_versions a menu_entries; RPC dostava target_org_id, kontroluje can_access_location a DB limity. Chybi DB integračni test se Supabase Auth session a UI napojeni import obrazovky.
 
+### Schvaleni a publish maji produkcni API nad RPC
+
+- Status: partial
+- Owner: Product
+- Evidence: POST /api/approvals/menu-version, /api/approvals/deck-version a /api/screens/[screenId]/publish validuji UUID payloady, pouzivaji role approver/publisher a volaji Supabase RPC pres cookie-backed Auth klienta; chybi DB smoke test a napojeni tlacitek v UI.
+
 ### UI audit generuje inventar tlacitek, linku a screenshot artefaktu
 
 - Status: partial
@@ -218,7 +224,7 @@ This report is intentionally critical. A passing build is not treated as proof t
 
 - Status: partial
 - Owner: Product
-- Evidence: MenuReview obsahuje local content/layout/export approval gate a Supabase migrace pridava auditovane RPC; chybi UI server action se Supabase Auth a DB test.
+- Evidence: MenuReview obsahuje local content/layout/export approval gate, Supabase migrace pridava auditovane RPC a produkcni approval/publish route handlery uz volaji RPC pres Supabase Auth; chybi UI napojeni a DB test.
 
 ### Lokální UI gate nepustí publish bez content/layout/export potvrzení
 

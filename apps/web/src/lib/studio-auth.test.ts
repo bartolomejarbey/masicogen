@@ -34,6 +34,8 @@ describe("studio auth guard", () => {
     expect(roleCanAccess("editor", studioRoleGroups.contentEditors)).toBe(true);
     expect(roleCanAccess("viewer", studioRoleGroups.contentEditors)).toBe(false);
     expect(roleCanAccess("publisher", studioRoleGroups.renderOperators)).toBe(true);
+    expect(roleCanAccess("approver", studioRoleGroups.approvers)).toBe(true);
+    expect(roleCanAccess("editor", studioRoleGroups.approvers)).toBe(false);
     expect(roleCanAccess("approver", studioRoleGroups.screenManagers)).toBe(false);
   });
 

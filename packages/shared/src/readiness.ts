@@ -63,9 +63,9 @@ export const readinessFindings: ReadinessFinding[] = [
     severity: "P0",
     category: "Schvalovani",
     title: "Schvaleni a publikace maji gate/RPC zaklad, ale nejsou jeste end-to-end v UI",
-    evidence: "Shared evaluatePublishReadiness blokuje publish bez content/layout/export potvrzeni a migrace 202607060003 pridava approve_menu_version, approve_deck_version a publish_deck_to_screen RPC s audit_log zapisem.",
-    impact: "Systém uz ma konkretni control point pro lidske schvaleni, ale personal ho zatim nevola pres Supabase Auth UI a DB integrační test.",
-    nextAction: "Napojit Supabase session do UI, zavolat RPC pres server action, pridat role/cross-org/publish rollback testy.",
+    evidence: "Shared evaluatePublishReadiness blokuje publish bez content/layout/export potvrzeni, migrace 202607060003 pridava approve_menu_version, approve_deck_version a publish_deck_to_screen RPC s audit_log zapisem a route handlery /api/approvals/* plus /api/screens/[screenId]/publish je volaji pres Supabase Auth.",
+    impact: "Systém uz ma konkretni control point pro lidske schvaleni a produkcni API mutace, ale personal je zatim nema napojene z UI a chybi DB integrační test.",
+    nextAction: "Napojit UI akce na approval/publish route handlery, pridat role/cross-org/publish rollback testy a overit player manifest po publish eventu.",
     status: "partial"
   },
   {
@@ -163,7 +163,7 @@ export const readinessGates: ReadinessGate[] = [
     label: "Studio browser API používá role z org_memberships",
     status: "partial",
     owner: "Security",
-    evidence: "requireStudioApiAccess chrání chat/upload/render/pair/export/import, role skupiny blokují viewer u mutací, menu import nepovoluje designer roli a produkční orgId se bere ze session; chybí DB integrační testy."
+    evidence: "requireStudioApiAccess chrání chat/upload/render/pair/export/import/approval/publish, role skupiny blokují viewer u mutací, menu import nepovoluje designer roli, approval je oddeleny od editace a produkční orgId se bere ze session; chybí DB integrační testy."
   },
   {
     id: "production-studio-auth-lock",
@@ -271,6 +271,13 @@ export const readinessGates: ReadinessGate[] = [
     evidence: "/api/menus/import-text vola import_text_menu_version RPC pro menu_sources, menus, menu_versions a menu_entries; RPC dostava target_org_id, kontroluje can_access_location a DB limity. Chybi DB integračni test se Supabase Auth session a UI napojeni import obrazovky."
   },
   {
+    id: "approval-publish-api-rpc",
+    label: "Schvaleni a publish maji produkcni API nad RPC",
+    status: "partial",
+    owner: "Product",
+    evidence: "POST /api/approvals/menu-version, /api/approvals/deck-version a /api/screens/[screenId]/publish validuji UUID payloady, pouzivaji role approver/publisher a volaji Supabase RPC pres cookie-backed Auth klienta; chybi DB smoke test a napojeni tlacitek v UI."
+  },
+  {
     id: "ui-interaction-audit",
     label: "UI audit generuje inventar tlacitek, linku a screenshot artefaktu",
     status: "partial",
@@ -282,7 +289,7 @@ export const readinessGates: ReadinessGate[] = [
     label: "Kazdy vystup vyzaduje rucni schvaleni",
     status: "partial",
     owner: "Product",
-    evidence: "MenuReview obsahuje local content/layout/export approval gate a Supabase migrace pridava auditovane RPC; chybi UI server action se Supabase Auth a DB test."
+    evidence: "MenuReview obsahuje local content/layout/export approval gate, Supabase migrace pridava auditovane RPC a produkcni approval/publish route handlery uz volaji RPC pres Supabase Auth; chybi UI napojeni a DB test."
   },
   {
     id: "local-approval-gate",
