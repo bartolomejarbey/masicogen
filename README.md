@@ -25,6 +25,12 @@ pnpm test
 pnpm build
 ```
 
+## Vercel deploy
+
+Vercel projekt pro studio ma mit Root Directory nastaveny na `apps/web`.
+Build command je `pnpm build` a Output Directory je `.next`.
+Nenastavujte Output Directory na `apps/web/.next`, protoze pri rootu `apps/web` by Vercel hledal `apps/web/apps/web/.next`.
+
 ## Bezpecnost
 
 Klice sdilene v chatu nebo issue trackeru povazujte pred produkci za kompromitovane. Pro ostrou verzi vytvorte nove OpenAI a Supabase credentials, omezte je na potrebne scope a ulozte je do Vercel/Railway secrets.
