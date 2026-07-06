@@ -48,6 +48,20 @@ export async function requireScreenAccess(request: Request, screenId?: string) {
     return null;
   }
 
+  if (screenId && !isUuidLike(screenId)) {
+    return Response.json(
+      { error: "screenId musí být v produkci UUID.", code: "invalid_screen_id" },
+      { status: 400 }
+    );
+  }
+
+  if (!playerTokenHashingConfigured()) {
+    return Response.json(
+      { error: "PLAYER_TOKEN_PEPPER is not configured.", code: "player_token_pepper_missing" },
+      { status: 503 }
+    );
+  }
+
   const token = readBearerToken(request);
   if (!token) {
     return Response.json({ error: "Missing screen token" }, { status: 401 });
@@ -102,9 +116,18 @@ export function createPairingCode() {
 }
 
 export function hashToken(token: string) {
+  const pepper = process.env.PLAYER_TOKEN_PEPPER;
+  if (!pepper && !isLocalDev()) {
+    throw new Error("PLAYER_TOKEN_PEPPER is required for production player token hashing.");
+  }
+
   return createHash("sha256")
-    .update(`${process.env.PLAYER_TOKEN_PEPPER ?? ""}:${token}`)
+    .update(`${pepper ?? ""}:${token}`)
     .digest("hex");
+}
+
+export function playerTokenHashingConfigured() {
+  return isLocalDev() || Boolean(process.env.PLAYER_TOKEN_PEPPER);
 }
 
 export function isUuidLike(value: string) {

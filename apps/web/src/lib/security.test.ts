@@ -53,13 +53,52 @@ describe("API security guards", () => {
   it("requires a bearer token for screen APIs in production", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("NEXT_PUBLIC_APP_ENV", "production");
+    vi.stubEnv("PLAYER_TOKEN_PEPPER", "pepper");
 
     const response = await requireScreenAccess(
-      new Request("https://tv.test/api/player/screen/manifest"),
-      "screen"
+      new Request("https://tv.test/api/player/00000000-0000-4000-8000-000000000010/manifest"),
+      "00000000-0000-4000-8000-000000000010"
     );
 
     expect(response?.status).toBe(401);
+    vi.unstubAllEnvs();
+  });
+
+  it("rejects non-UUID screen ids in production before token lookup", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_APP_ENV", "production");
+    vi.stubEnv("PLAYER_TOKEN_PEPPER", "pepper");
+
+    const response = await requireScreenAccess(
+      new Request("https://tv.test/api/player/screen-demo/manifest", {
+        headers: { authorization: "Bearer device-token" }
+      }),
+      "screen-demo"
+    );
+
+    expect(response?.status).toBe(400);
+    await expect(response?.json()).resolves.toMatchObject({
+      code: "invalid_screen_id"
+    });
+    vi.unstubAllEnvs();
+  });
+
+  it("requires a player token pepper in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_APP_ENV", "production");
+    vi.stubEnv("PLAYER_TOKEN_PEPPER", "");
+
+    const response = await requireScreenAccess(
+      new Request("https://tv.test/api/player/00000000-0000-4000-8000-000000000010/manifest", {
+        headers: { authorization: "Bearer device-token" }
+      }),
+      "00000000-0000-4000-8000-000000000010"
+    );
+
+    expect(response?.status).toBe(503);
+    await expect(response?.json()).resolves.toMatchObject({
+      code: "player_token_pepper_missing"
+    });
     vi.unstubAllEnvs();
   });
 
@@ -69,12 +108,13 @@ describe("API security guards", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
     vi.stubEnv("ALLOW_LEGACY_PLAYER_TOKEN", "false");
+    vi.stubEnv("PLAYER_TOKEN_PEPPER", "pepper");
 
     const response = await requireScreenAccess(
-      new Request("https://tv.test/api/player/screen/manifest", {
+      new Request("https://tv.test/api/player/00000000-0000-4000-8000-000000000010/manifest", {
         headers: { authorization: "Bearer device-token" }
       }),
-      "screen"
+      "00000000-0000-4000-8000-000000000010"
     );
 
     expect(response?.status).toBe(503);
@@ -88,12 +128,13 @@ describe("API security guards", () => {
     vi.stubEnv("PLAYER_DEVICE_TOKEN", "legacy-token");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
+    vi.stubEnv("PLAYER_TOKEN_PEPPER", "pepper");
 
     const response = await requireScreenAccess(
-      new Request("https://tv.test/api/player/screen/manifest", {
+      new Request("https://tv.test/api/player/00000000-0000-4000-8000-000000000010/manifest", {
         headers: { authorization: "Bearer legacy-token" }
       }),
-      "screen"
+      "00000000-0000-4000-8000-000000000010"
     );
 
     expect(response?.status).toBe(401);

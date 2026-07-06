@@ -4,15 +4,21 @@ import { getSupabaseAdmin, supabaseAdminConfigured } from "./supabase-admin";
 type ScreenRow = {
   id: string;
   org_id: string;
-  current_deck_version_id: string | null;
+  status: string;
+};
+
+type PublishEventRow = {
+  deck_version_id: string;
+  export_id: string | null;
+  created_at: string;
 };
 
 type ExportRow = {
+  id: string;
   bucket: string;
   object_path: string;
   checksum: string;
   duration_seconds: number | string | null;
-  created_at: string;
 };
 
 export function playerDataConfigured() {
@@ -27,7 +33,7 @@ export async function getPublishedPlayerManifest(screenId: string): Promise<Play
 
   const { data: screen, error: screenError } = await supabase
     .from("screens")
-    .select("id, org_id, current_deck_version_id")
+    .select("id, org_id, status")
     .eq("id", screenId)
     .maybeSingle<ScreenRow>();
 
@@ -35,18 +41,35 @@ export async function getPublishedPlayerManifest(screenId: string): Promise<Play
     throw new Error(`Screen lookup failed: ${screenError.message}`);
   }
 
-  if (!screen?.current_deck_version_id) {
+  if (!screen || screen.status !== "published") {
+    return null;
+  }
+
+  const { data: publishEvent, error: publishError } = await supabase
+    .from("publish_events")
+    .select("deck_version_id, export_id, created_at")
+    .eq("org_id", screen.org_id)
+    .eq("screen_id", screen.id)
+    .not("export_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<PublishEventRow>();
+
+  if (publishError) {
+    throw new Error(`Publish event lookup failed: ${publishError.message}`);
+  }
+
+  if (!publishEvent?.export_id) {
     return null;
   }
 
   const { data: exportRow, error: exportError } = await supabase
     .from("exports")
-    .select("bucket, object_path, checksum, duration_seconds, created_at")
+    .select("id, bucket, object_path, checksum, duration_seconds")
     .eq("org_id", screen.org_id)
-    .eq("deck_version_id", screen.current_deck_version_id)
+    .eq("id", publishEvent.export_id)
+    .eq("deck_version_id", publishEvent.deck_version_id)
     .eq("format", "mp4")
-    .order("created_at", { ascending: false })
-    .limit(1)
     .maybeSingle<ExportRow>();
 
   if (exportError) {
@@ -67,12 +90,12 @@ export async function getPublishedPlayerManifest(screenId: string): Promise<Play
 
   return playerManifestSchema.parse({
     screenId,
-    versionId: screen.current_deck_version_id,
+    versionId: publishEvent.deck_version_id,
     status: "published",
     videoUrl: signedUrl.signedUrl,
     checksum: exportRow.checksum,
     durationSeconds: Number(exportRow.duration_seconds ?? 1),
-    publishedAt: exportRow.created_at,
+    publishedAt: publishEvent.created_at,
     heartbeatIntervalSeconds: 60
   });
 }

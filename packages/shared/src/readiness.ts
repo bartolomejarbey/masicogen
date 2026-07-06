@@ -83,9 +83,9 @@ export const readinessFindings: ReadinessFinding[] = [
     severity: "P0",
     category: "TV player",
     title: "TV player uz nemaskuje produkcni chybu demo menum, ale last-known-good jeste chybi",
-    evidence: "Lokální demo prehrava realne MP4; production /tv bez screen tokenu zobrazi provozni hlasku 'Obrazovka není spárovaná' misto demo menu nebo raw Manifest 401. Produkcni offline cache a restore pointer stale nejsou hotove.",
-    impact: "TV bez autorizace uz nevypada jako spravne publikovana smycka a neukazuje technicky raw error, ale ostrý provoz stale potrebuje posledni dobrou verzi pri expiraci URL nebo vypadku site.",
-    nextAction: "Doplnit produkcni last-known-good cache, preloading na hrane smycky a offline reload test.",
+    evidence: "Lokální demo prehrava realne MP4; production /tv bez screen tokenu zobrazi provozni hlasku 'Obrazovka není spárovaná' misto demo menu nebo raw Manifest 401. Pairing route uklada screen token hash a player manifest bere export_id z publish_events, ale produkcni offline cache a restore pointer stale nejsou hotove.",
+    impact: "TV bez autorizace uz nevypada jako spravne publikovana smycka a neukazuje technicky raw error; publikovany artefakt je deterministicky podle publish eventu, ale ostrý provoz stale potrebuje posledni dobrou verzi pri expiraci signed URL nebo vypadku site.",
+    nextAction: "Doplnit Cache API/Service Worker pro skutecny last-known-good MP4, preloading na hrane smycky a offline reload test.",
     status: "partial"
   },
   {
@@ -102,10 +102,10 @@ export const readinessFindings: ReadinessFinding[] = [
     id: "tv-pairing-admin",
     severity: "P1",
     category: "TV player",
-    title: "Parovani obrazovky neni obsluze viditelne jako hotovy tok",
-    evidence: "Player umi token v URL/localStorage, ale admin nema kompletni parovaci obrazovku s jednorazovym kodem.",
-    impact: "Instalace na fyzicke TV by vyzadovala technicky zasah misto samostatneho kroku pro personal.",
-    nextAction: "Doplnit screens page: vytvorit kod, ukazat token stav, posledni heartbeat a rotaci tokenu.",
+    title: "Parovani obrazovky ma DB token foundation, ale chybi admin UI a claim code flow",
+    evidence: "/api/screens/pair pro authenticated screen managera vytvori nebo zrotuje screens/screen_tokens, uklada jen hash, revokuje stare tokeny a respektuje location scopes. Admin nema kompletni obrazovku pro pairing-code claim, heartbeat stav a lifecycle tokenu.",
+    impact: "Instalace na fyzicke TV uz ma serverovy zaklad, ale stale by vyzadovala technicky POST misto samostatneho kroku pro personal.",
+    nextAction: "Doplnit screens page a pairing sessions: jednorazovy kod zadany na TV, stav tokenu, posledni heartbeat, rotace/revokace a audit log.",
     status: "partial"
   },
   {
@@ -227,6 +227,20 @@ export const readinessGates: ReadinessGate[] = [
     status: "passing",
     owner: "TV player",
     evidence: "GET /api/player/screen-demo/manifest vrací inline URL na /api/exports/export-demo/download?inline=1; export route podporuje byte ranges pro video element."
+  },
+  {
+    id: "screen-token-persistence",
+    label: "Produkční pairing route ukládá hashovaný screen token",
+    status: "partial",
+    owner: "TV player",
+    evidence: "/api/screens/pair vytváří nebo updatuje screens, revokuje staré screen_tokens, ukládá nový token_hash s expirací a raw token vrací jen jednou; chybí DB smoke test a admin pairing-code UI."
+  },
+  {
+    id: "player-uses-published-export",
+    label: "TV manifest používá export explicitně uložený publish eventem",
+    status: "partial",
+    owner: "TV player",
+    evidence: "getPublishedPlayerManifest vybírá poslední publish_events.export_id pro screen a teprve ten podepisuje pro přehrání; chybí integrační test publish_deck_to_screen -> player manifest."
   },
   {
     id: "supabase-rls",

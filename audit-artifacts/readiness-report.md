@@ -11,7 +11,7 @@ This report is intentionally critical. A passing build is not treated as proof t
 ## Gate Summary
 
 - open: 0
-- partial: 9
+- partial: 11
 - passing: 9
 
 ## Findings
@@ -52,9 +52,9 @@ This report is intentionally critical. A passing build is not treated as proof t
 
 - Category: TV player
 - Status: partial
-- Evidence: Lokální demo prehrava realne MP4; production /tv bez screen tokenu zobrazi provozni hlasku 'Obrazovka není spárovaná' misto demo menu nebo raw Manifest 401. Produkcni offline cache a restore pointer stale nejsou hotove.
-- Impact: TV bez autorizace uz nevypada jako spravne publikovana smycka a neukazuje technicky raw error, ale ostrý provoz stale potrebuje posledni dobrou verzi pri expiraci URL nebo vypadku site.
-- Next action: Doplnit produkcni last-known-good cache, preloading na hrane smycky a offline reload test.
+- Evidence: Lokální demo prehrava realne MP4; production /tv bez screen tokenu zobrazi provozni hlasku 'Obrazovka není spárovaná' misto demo menu nebo raw Manifest 401. Pairing route uklada screen token hash a player manifest bere export_id z publish_events, ale produkcni offline cache a restore pointer stale nejsou hotove.
+- Impact: TV bez autorizace uz nevypada jako spravne publikovana smycka a neukazuje technicky raw error; publikovany artefakt je deterministicky podle publish eventu, ale ostrý provoz stale potrebuje posledni dobrou verzi pri expiraci signed URL nebo vypadku site.
+- Next action: Doplnit Cache API/Service Worker pro skutecny last-known-good MP4, preloading na hrane smycky a offline reload test.
 
 ### P1 - Service role je server-only, ale potrebuje uzsi RPC hranice
 
@@ -64,13 +64,13 @@ This report is intentionally critical. A passing build is not treated as proof t
 - Impact: Chyba v serverovem route handleru by stale mohla obejit RLS, i kdyz uzivatel nema moznost poslat vlastni orgId v produkci a export path ma aplikacni i DB pojistku.
 - Next action: Nahradit primy service-role zapis uzkymi RPC funkcemi, pridat composite org_id FK testy a auditovat vsechny admin klienty.
 
-### P1 - Parovani obrazovky neni obsluze viditelne jako hotovy tok
+### P1 - Parovani obrazovky ma DB token foundation, ale chybi admin UI a claim code flow
 
 - Category: TV player
 - Status: partial
-- Evidence: Player umi token v URL/localStorage, ale admin nema kompletni parovaci obrazovku s jednorazovym kodem.
-- Impact: Instalace na fyzicke TV by vyzadovala technicky zasah misto samostatneho kroku pro personal.
-- Next action: Doplnit screens page: vytvorit kod, ukazat token stav, posledni heartbeat a rotaci tokenu.
+- Evidence: /api/screens/pair pro authenticated screen managera vytvori nebo zrotuje screens/screen_tokens, uklada jen hash, revokuje stare tokeny a respektuje location scopes. Admin nema kompletni obrazovku pro pairing-code claim, heartbeat stav a lifecycle tokenu.
+- Impact: Instalace na fyzicke TV uz ma serverovy zaklad, ale stale by vyzadovala technicky POST misto samostatneho kroku pro personal.
+- Next action: Doplnit screens page a pairing sessions: jednorazovy kod zadany na TV, stav tokenu, posledni heartbeat, rotace/revokace a audit log.
 
 ### P1 - UI audit ma inventar controls, ale jeste ne plny browser/OCR crawl
 
@@ -171,6 +171,18 @@ This report is intentionally critical. A passing build is not treated as proof t
 - Status: passing
 - Owner: TV player
 - Evidence: GET /api/player/screen-demo/manifest vrací inline URL na /api/exports/export-demo/download?inline=1; export route podporuje byte ranges pro video element.
+
+### Produkční pairing route ukládá hashovaný screen token
+
+- Status: partial
+- Owner: TV player
+- Evidence: /api/screens/pair vytváří nebo updatuje screens, revokuje staré screen_tokens, ukládá nový token_hash s expirací a raw token vrací jen jednou; chybí DB smoke test a admin pairing-code UI.
+
+### TV manifest používá export explicitně uložený publish eventem
+
+- Status: partial
+- Owner: TV player
+- Evidence: getPublishedPlayerManifest vybírá poslední publish_events.export_id pro screen a teprve ten podepisuje pro přehrání; chybí integrační test publish_deck_to_screen -> player manifest.
 
 ### RLS migrace existuji pro multi-tenant zaklad
 
