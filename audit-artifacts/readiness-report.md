@@ -11,7 +11,7 @@ This report is intentionally critical. A passing build is not treated as proof t
 ## Gate Summary
 
 - open: 0
-- partial: 8
+- partial: 9
 - passing: 9
 
 ## Findings
@@ -40,13 +40,13 @@ This report is intentionally critical. A passing build is not treated as proof t
 - Impact: Systém uz ma konkretni control point pro lidske schvaleni, ale personal ho zatim nevola pres Supabase Auth UI a DB integrační test.
 - Next action: Napojit Supabase session do UI, zavolat RPC pres server action, pridat role/cross-org/publish rollback testy.
 
-### P0 - Demo MP4 jde stahnout, ale produkcni Storage/export/publish UI stale chybi
+### P0 - Worker umi persistovat final MP4 export, ale publish UI/DB smoke stale chybi
 
 - Category: Render
 - Status: partial
-- Evidence: Worker smoke render vytvari 27s MP4 a UI umi stahnout lokalni export-demo; upload do Storage, exports row a publish pointer stale chybi.
-- Impact: USB fallback je lokalne prokazatelny, ale ostrý provoz stale nema auditovany schvaleny export navazany na deck_version.
-- Next action: Promovat MP4 do render-artifacts/exports bucketu, vytvorit exports row, signed download a publish pointer.
+- Evidence: Worker smoke render vytvari 27s MP4, UI umi stahnout lokalni export-demo a worker final render ma persistFinalMp4Export pro Storage upload, assets row, exports row a job_events. Chybi overeni proti realne Supabase Storage/DB a UI publish pointer.
+- Impact: USB fallback je lokalne prokazatelny a produkcni export persistence ma kodovy zaklad, ale ostrý provoz stale nema prokazany schvaleny export navazany na screen publish.
+- Next action: Spustit worker proti Supabase DB/Storage, overit exports row, signed download, publish_deck_to_screen a TV player manifest pro schvalenou deck_version.
 
 ### P0 - TV player uz nemaskuje produkcni chybu demo menum, ale last-known-good jeste chybi
 
@@ -154,6 +154,12 @@ This report is intentionally critical. A passing build is not treated as proof t
 - Owner: Render
 - Evidence: pnpm worker:smoke-render vytvori 27s MP4; audit-artifacts/final-smoke-render.mp4 ma H.264, yuv420p, 1920x1080, 30fps, AAC stereo.
 
+### Worker final render ma export persistence foundation
+
+- Status: partial
+- Owner: Render
+- Evidence: persistFinalMp4Export uklada MP4 do exports Storage bucketu, upsertuje assets/exports a zapisuje job_events; zatim chybi Supabase Storage/DB smoke test s realnou service-role konfiguraci.
+
 ### Studio umi lokálně stáhnout demo MP4
 
 - Status: passing
@@ -170,7 +176,7 @@ This report is intentionally critical. A passing build is not treated as proof t
 
 - Status: partial
 - Owner: Data
-- Evidence: supabase/migrations obsahuje foundation, audit hardening, approval/publish RPC, text import RPC a location-scope hardening pro provozovnove tabulky, ale chybi realne role testy proti DB.
+- Evidence: supabase/migrations obsahuje foundation, audit hardening, approval/publish RPC, text import RPC, location-scope hardening a export uniqueness, ale chybi realne role testy proti DB.
 
 ### Klicove obrazovky maji desktop/mobile screenshot
 

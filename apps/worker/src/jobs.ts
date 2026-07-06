@@ -1,13 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { type DeckManifest, type MenuExtractionResult, type RenderManifest } from "@masico/shared";
 import { workerConfig } from "./config";
-import { renderDeckToMp4 } from "./render-job";
+import { persistFinalMp4Export } from "./export-artifacts";
+import { cleanupRenderResult, renderDeckToMp4, type RenderResult } from "./render-job";
 import { createWorkerSupabaseClient } from "./supabase";
 
 type RenderJobRow = {
   id: string;
   org_id: string;
   deck_version_id: string;
+  job_type: "render-preview" | "render-final";
   attempts: number;
   max_attempts: number;
   lease_token: string | null;
@@ -71,12 +73,34 @@ export async function processOneRenderJob() {
       }
     };
 
-    const result = await renderDeckToMp4(manifest);
+    let result: RenderResult | null = null;
+    let outputAssetId: string | null = null;
+
+    try {
+      result = await renderDeckToMp4(manifest);
+
+      if (job.job_type === "render-final") {
+        const persistedExport = await persistFinalMp4Export({
+          supabase,
+          orgId: job.org_id,
+          deckVersionId: job.deck_version_id,
+          renderJobId: job.id,
+          renderResult: result
+        });
+        outputAssetId = persistedExport.assetId;
+      }
+    } finally {
+      if (result) {
+        await cleanupRenderResult(result);
+      }
+    }
+
     await updateLeasedRenderJob(job, {
       status: "succeeded",
       progress: 100,
       renderer_version: deckVersion.manifest_json.rendererVersion,
       ffprobe_json: result.probe ?? null,
+      output_asset_id: outputAssetId,
       leased_by: null,
       lease_token: null,
       lease_expires_at: null,
@@ -114,7 +138,7 @@ async function leaseNextRenderJob() {
 
   const { data: candidates, error } = await supabase
     .from("render_jobs")
-    .select("id, org_id, deck_version_id, attempts, max_attempts, lease_token")
+    .select("id, org_id, deck_version_id, job_type, attempts, max_attempts, lease_token")
     .in("status", ["queued", "retrying"])
     .order("created_at", { ascending: true })
     .limit(10)
@@ -146,7 +170,7 @@ async function leaseNextRenderJob() {
     .eq("attempts", job.attempts)
     .lt("attempts", job.max_attempts)
     .in("status", ["queued", "retrying"])
-    .select("id, org_id, deck_version_id, attempts, max_attempts, lease_token")
+    .select("id, org_id, deck_version_id, job_type, attempts, max_attempts, lease_token")
     .maybeSingle<RenderJobRow>();
 
   if (leaseError) {
@@ -194,7 +218,7 @@ async function recoverExpiredRenderJobs() {
   const now = new Date().toISOString();
   const { data: expiredJobs, error } = await supabase
     .from("render_jobs")
-    .select("id, org_id, deck_version_id, attempts, max_attempts, lease_token")
+    .select("id, org_id, deck_version_id, job_type, attempts, max_attempts, lease_token")
     .in("status", ["leased", "running"])
     .lt("lease_expires_at", now)
     .limit(20)

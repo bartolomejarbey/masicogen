@@ -72,10 +72,10 @@ export const readinessFindings: ReadinessFinding[] = [
     id: "render-artifact-wireup",
     severity: "P0",
     category: "Render",
-    title: "Demo MP4 jde stahnout, ale produkcni Storage/export/publish UI stale chybi",
-    evidence: "Worker smoke render vytvari 27s MP4 a UI umi stahnout lokalni export-demo; upload do Storage, exports row a publish pointer stale chybi.",
-    impact: "USB fallback je lokalne prokazatelny, ale ostrý provoz stale nema auditovany schvaleny export navazany na deck_version.",
-    nextAction: "Promovat MP4 do render-artifacts/exports bucketu, vytvorit exports row, signed download a publish pointer.",
+    title: "Worker umi persistovat final MP4 export, ale publish UI/DB smoke stale chybi",
+    evidence: "Worker smoke render vytvari 27s MP4, UI umi stahnout lokalni export-demo a worker final render ma persistFinalMp4Export pro Storage upload, assets row, exports row a job_events. Chybi overeni proti realne Supabase Storage/DB a UI publish pointer.",
+    impact: "USB fallback je lokalne prokazatelny a produkcni export persistence ma kodovy zaklad, ale ostrý provoz stale nema prokazany schvaleny export navazany na screen publish.",
+    nextAction: "Spustit worker proti Supabase DB/Storage, overit exports row, signed download, publish_deck_to_screen a TV player manifest pro schvalenou deck_version.",
     status: "partial"
   },
   {
@@ -208,6 +208,13 @@ export const readinessGates: ReadinessGate[] = [
     evidence: "pnpm worker:smoke-render vytvori 27s MP4; audit-artifacts/final-smoke-render.mp4 ma H.264, yuv420p, 1920x1080, 30fps, AAC stereo."
   },
   {
+    id: "worker-export-persistence",
+    label: "Worker final render ma export persistence foundation",
+    status: "partial",
+    owner: "Render",
+    evidence: "persistFinalMp4Export uklada MP4 do exports Storage bucketu, upsertuje assets/exports a zapisuje job_events; zatim chybi Supabase Storage/DB smoke test s realnou service-role konfiguraci."
+  },
+  {
     id: "demo-mp4-download",
     label: "Studio umi lokálně stáhnout demo MP4",
     status: "passing",
@@ -226,7 +233,7 @@ export const readinessGates: ReadinessGate[] = [
     label: "RLS migrace existuji pro multi-tenant zaklad",
     status: "partial",
     owner: "Data",
-    evidence: "supabase/migrations obsahuje foundation, audit hardening, approval/publish RPC, text import RPC a location-scope hardening pro provozovnove tabulky, ale chybi realne role testy proti DB."
+    evidence: "supabase/migrations obsahuje foundation, audit hardening, approval/publish RPC, text import RPC, location-scope hardening a export uniqueness, ale chybi realne role testy proti DB."
   },
   {
     id: "screenshots",

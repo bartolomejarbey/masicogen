@@ -10,6 +10,9 @@ export const workerConfig = {
   pollIntervalMs: Number(process.env.WORKER_POLL_INTERVAL_MS ?? 5000),
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+  storage: {
+    exportsBucket: process.env.STORAGE_EXPORTS_BUCKET ?? "exports"
+  },
   queues: {
     aiExtractMenu: process.env.QUEUE_AI_EXTRACT_MENU ?? "ai-extract-menu",
     aiChatPatch: process.env.QUEUE_AI_CHAT_PATCH ?? "ai-chat-patch",

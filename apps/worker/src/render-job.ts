@@ -8,6 +8,7 @@ import { buildConcatFile, renderDeckSlidesToPng } from "./svg-slide-renderer";
 
 export type RenderResult = {
   outputPath: string;
+  tempDir: string;
   ffmpegArgs: string[];
   probe?: Awaited<ReturnType<typeof ffprobe>>;
 };
@@ -27,7 +28,7 @@ export async function renderDeckToMp4(manifest: RenderManifest): Promise<RenderR
     // The production implementation renders Remotion frames into framesDir before this command.
     // Keeping the command construction here makes the export preset testable and auditable.
     if (process.env.WORKER_DRY_RUN === "1") {
-      return { outputPath, ffmpegArgs };
+      return { outputPath, tempDir, ffmpegArgs };
     }
 
     const renderedSlides = await renderDeckSlidesToPng(parsed.deck, parsed.menu ?? null, framesDir);
@@ -42,11 +43,15 @@ export async function renderDeckToMp4(manifest: RenderManifest): Promise<RenderR
     const probe = await ffprobe(outputPath);
     await assertCompatibleMp4(outputPath, probe, expectedDurationSeconds);
 
-    return { outputPath, ffmpegArgs: concatFfmpegArgs, probe };
+    return { outputPath, tempDir, ffmpegArgs: concatFfmpegArgs, probe };
   } catch (error) {
     await rm(tempDir, { recursive: true, force: true });
     throw error;
   }
+}
+
+export async function cleanupRenderResult(result: RenderResult) {
+  await rm(result.tempDir, { recursive: true, force: true });
 }
 
 export async function assertCompatibleMp4(
