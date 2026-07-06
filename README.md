@@ -30,6 +30,8 @@ pnpm build
 Vercel projekt pro studio ma mit Root Directory nastaveny na `apps/web`.
 Build command je `pnpm build` a Output Directory je `.next`.
 Nenastavujte Output Directory na `apps/web/.next`, protoze pri rootu `apps/web` by Vercel hledal `apps/web/apps/web/.next`.
+Soubor `apps/web/vercel.json` zamerne drzi `outputDirectory` primo v project rootu,
+aby prepsal pripadny stary dashboard override.
 
 ## Bezpecnost
 
