@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { storageBuckets } from "./env";
-import { generateBackgroundImage } from "./openai";
+import { generateBackgroundImage, getOpenAIImageDimensions } from "./openai";
 import { getSupabaseAdmin } from "./supabase-admin";
 
 type StoredBackgroundInput = {
@@ -35,6 +35,7 @@ export async function generateAndStoreBackground(input: StoredBackgroundInput) {
   const file = Buffer.from(b64, "base64");
   const sha256 = createHash("sha256").update(file).digest("hex");
   const objectPath = `org/${input.orgId}/generated-backgrounds/${randomUUID()}.png`;
+  const dimensions = getOpenAIImageDimensions();
 
   const upload = await supabase.storage
     .from(storageBuckets.generatedAssets)
@@ -55,8 +56,8 @@ export async function generateAndStoreBackground(input: StoredBackgroundInput) {
       object_path: objectPath,
       type: "image",
       sha256,
-      width: 1920,
-      height: 1080,
+      width: dimensions.width,
+      height: dimensions.height,
       size_bytes: file.byteLength,
       uploaded_by: input.userId,
       metadata: {
@@ -110,8 +111,8 @@ export async function generateAndStoreBackground(input: StoredBackgroundInput) {
     objectPath: asset.object_path,
     signedUrl: signedUrl.signedUrl,
     sha256,
-    width: 1920,
-    height: 1080,
+    width: dimensions.width,
+    height: dimensions.height,
     sizeBytes: file.byteLength
   };
 }

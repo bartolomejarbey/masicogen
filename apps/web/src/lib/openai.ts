@@ -3,6 +3,7 @@ import { z } from "zod";
 import { demoDataEnabled } from "./security";
 
 const OPENAI_BASE_URL = "https://api.openai.com/v1";
+const DEFAULT_OPENAI_IMAGE_SIZE = "1536x864";
 
 export async function extractMenuWithOpenAI(input: {
   text: string;
@@ -87,7 +88,7 @@ export async function generateBackgroundImage(input: {
     body: JSON.stringify({
       model: process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-2",
       prompt: safePrompt,
-      size: "1920x1080",
+      size: getOpenAIImageSize(),
       quality: input.quality === "final" ? "high" : "low",
       output_format: "png"
     })
@@ -103,6 +104,30 @@ export async function generateBackgroundImage(input: {
   return response.json() as Promise<{
     data?: Array<{ b64_json?: string; url?: string }>;
   }>;
+}
+
+export function getOpenAIImageDimensions() {
+  const [width, height] = getOpenAIImageSize().split("x").map((part) => Number.parseInt(part, 10));
+
+  if (!Number.isFinite(width) || !Number.isFinite(height)) {
+    const [fallbackWidth, fallbackHeight] = DEFAULT_OPENAI_IMAGE_SIZE
+      .split("x")
+      .map((part) => Number.parseInt(part, 10));
+
+    return {
+      width: fallbackWidth,
+      height: fallbackHeight
+    };
+  }
+
+  return {
+    width,
+    height
+  };
+}
+
+function getOpenAIImageSize() {
+  return process.env.OPENAI_IMAGE_SIZE ?? DEFAULT_OPENAI_IMAGE_SIZE;
 }
 
 export async function createAssistantText(message: string) {
