@@ -1,0 +1,142 @@
+[
+  {
+    "disabled": true,
+    "href": null,
+    "tag": "button",
+    "text": "Použít včerejšek",
+    "type": "button"
+  },
+  {
+    "disabled": true,
+    "href": null,
+    "tag": "button",
+    "text": "Nahrát jídelníček",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Ověřit ceny a alergeny",
+    "type": "button"
+  },
+  {
+    "disabled": true,
+    "href": null,
+    "tag": "button",
+    "text": "Zobrazit publikovanou verzi",
+    "type": "button"
+  },
+  {
+    "disabled": true,
+    "href": null,
+    "tag": "button",
+    "text": "Zobrazit problém",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": "/tv/screen-demo",
+    "tag": "a",
+    "text": "Otevřít TV přehrávač",
+    "type": null
+  },
+  {
+    "disabled": true,
+    "href": null,
+    "tag": "button",
+    "text": "Stáhnout MP4",
+    "type": "button"
+  },
+  {
+    "disabled": true,
+    "href": null,
+    "tag": "button",
+    "text": "Vrátit verzi z 07:55",
+    "type": "button"
+  },
+  {
+    "disabled": true,
+    "href": null,
+    "tag": "button",
+    "text": "Potvrdit",
+    "type": "button"
+  },
+  {
+    "disabled": true,
+    "href": null,
+    "tag": "button",
+    "text": "Potvrdit",
+    "type": "button"
+  },
+  {
+    "disabled": true,
+    "href": null,
+    "tag": "button",
+    "text": "Potvrdit",
+    "type": "button"
+  },
+  {
+    "disabled": true,
+    "href": null,
+    "tag": "button",
+    "text": "Naplánovat týden",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Dnešní menu",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Special menu",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Alergenová legenda",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Bezpečný okraj",
+    "type": "button"
+  },
+  {
+    "disabled": true,
+    "href": null,
+    "tag": "button",
+    "text": "Náhled čeká na napojení",
+    "type": "button"
+  },
+  {
+    "disabled": true,
+    "href": null,
+    "tag": "button",
+    "text": "Zkrátit názvy pro TV",
+    "type": "button"
+  },
+  {
+    "disabled": true,
+    "href": null,
+    "tag": "button",
+    "text": "Rozdělit dlouhé menu",
+    "type": "button"
+  },
+  {
+    "disabled": true,
+    "href": null,
+    "tag": "button",
+    "text": "Vygenerovat pozadí",
+    "type": "button"
+  }
+]

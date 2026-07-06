@@ -1,0 +1,11 @@
+HTTP/1.1 206 Partial Content
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+accept-ranges: bytes
+cache-control: no-store
+content-disposition: inline; filename="masico-demo-loop.mp4"
+content-length: 1024
+content-range: bytes 0-1023/1302164
+content-type: video/mp4
+Date: Mon, 06 Jul 2026 09:26:19 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5

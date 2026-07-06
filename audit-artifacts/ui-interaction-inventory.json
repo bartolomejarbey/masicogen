@@ -1,0 +1,690 @@
+{
+  "elements": [
+    {
+      "kind": "anchor",
+      "file": "apps/web/src/app/audit/page.tsx",
+      "line": 51,
+      "routeHint": "/audit",
+      "label": "10 prezentací",
+      "href": "#prezentace",
+      "typeAttr": null,
+      "disabled": false,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "anchor",
+      "file": "apps/web/src/app/audit/page.tsx",
+      "line": 52,
+      "routeHint": "/audit",
+      "label": "10 šablon",
+      "href": "#sablony",
+      "typeAttr": null,
+      "disabled": false,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "anchor",
+      "file": "apps/web/src/app/audit/page.tsx",
+      "line": 53,
+      "routeHint": "/audit",
+      "label": "Readiness P0/P1",
+      "href": "/readiness",
+      "typeAttr": null,
+      "disabled": false,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "link",
+      "file": "apps/web/src/app/login/page.tsx",
+      "line": 34,
+      "routeHint": "/login",
+      "label": "Zpět na studio",
+      "href": "/",
+      "typeAttr": null,
+      "disabled": false,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/app/page.tsx",
+      "line": 92,
+      "routeHint": "/",
+      "label": "Použít včerejšek - nenapojeno",
+      "href": null,
+      "typeAttr": "button",
+      "disabled": true,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/app/page.tsx",
+      "line": 128,
+      "routeHint": "/",
+      "label": "{location.action}",
+      "href": null,
+      "typeAttr": "button",
+      "disabled": true,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": [
+        "disabled_state_needs_clearer_reason"
+      ]
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/app/page.tsx",
+      "line": 194,
+      "routeHint": "/",
+      "label": "Vrátit verzi - není archiv",
+      "href": null,
+      "typeAttr": "button",
+      "disabled": true,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/app/page.tsx",
+      "line": 215,
+      "routeHint": "/",
+      "label": "Naplánovat týden - plánováno",
+      "href": null,
+      "typeAttr": "button",
+      "disabled": true,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": [
+        "disabled_state_needs_clearer_reason"
+      ]
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/app/page.tsx",
+      "line": 246,
+      "routeHint": "/",
+      "label": "Import menu - čeká na produkční tok",
+      "href": null,
+      "typeAttr": "button",
+      "disabled": true,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/app/page.tsx",
+      "line": 250,
+      "routeHint": "/",
+      "label": "Spárovat TV - čeká na UI",
+      "href": null,
+      "typeAttr": "button",
+      "disabled": true,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/app/page.tsx",
+      "line": 420,
+      "routeHint": "/",
+      "label": "Otevřít workflow - čeká na detail",
+      "href": null,
+      "typeAttr": "button",
+      "disabled": true,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "anchor",
+      "file": "apps/web/src/app/page.tsx",
+      "line": 96,
+      "routeHint": "/",
+      "label": "Vyzkoušet vložení textu",
+      "href": "#kontrola-menu",
+      "typeAttr": null,
+      "disabled": false,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "anchor",
+      "file": "apps/web/src/app/page.tsx",
+      "line": 123,
+      "routeHint": "/",
+      "label": "{location.action}",
+      "href": "location.actionHref",
+      "typeAttr": null,
+      "disabled": false,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "anchor",
+      "file": "apps/web/src/app/page.tsx",
+      "line": 186,
+      "routeHint": "/",
+      "label": "Otevřít demo přehrávač",
+      "href": "/tv/screen-demo",
+      "typeAttr": null,
+      "disabled": false,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": true,
+      "rel": "noreferrer",
+      "issues": []
+    },
+    {
+      "kind": "anchor",
+      "file": "apps/web/src/app/page.tsx",
+      "line": 190,
+      "routeHint": "/",
+      "label": "Stáhnout demo MP4",
+      "href": "/api/exports/export-demo/download",
+      "typeAttr": null,
+      "disabled": false,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": [
+        "direct_api_link_needs_runtime_access_check"
+      ]
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/components/LoginForm.tsx",
+      "line": 75,
+      "routeHint": "component:LoginForm",
+      "label": "{isSubmitting ? \"Přihlašuji...\" : \"Přihlásit se\"}",
+      "href": null,
+      "typeAttr": "submit",
+      "disabled": true,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": [
+        "label_too_long_for_fast_scan",
+        "disabled_state_needs_clearer_reason"
+      ]
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/components/MenuReview.tsx",
+      "line": 99,
+      "routeHint": "component:MenuReview",
+      "label": "Zpracovat lokálně",
+      "href": null,
+      "typeAttr": "submit",
+      "disabled": false,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/components/MenuReview.tsx",
+      "line": 103,
+      "routeHint": "component:MenuReview",
+      "label": "Vrátit ukázku",
+      "href": null,
+      "typeAttr": "button",
+      "disabled": false,
+      "hasOnClick": true,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/components/MenuReview.tsx",
+      "line": 257,
+      "routeHint": "component:MenuReview",
+      "label": "{publishReadiness.canPublish\n                ? \"Publikovat - čeká na produkční RPC\"\n                : \"Publikovat - čeká na schválení\"}",
+      "href": null,
+      "typeAttr": "button",
+      "disabled": true,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": [
+        "label_too_long_for_fast_scan"
+      ]
+    },
+    {
+      "kind": "anchor",
+      "file": "apps/web/src/components/MenuReview.tsx",
+      "line": 263,
+      "routeHint": "component:MenuReview",
+      "label": "Otevřít demo přehrávač",
+      "href": "/tv/screen-demo",
+      "typeAttr": null,
+      "disabled": false,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": true,
+      "rel": "noreferrer",
+      "issues": []
+    },
+    {
+      "kind": "anchor",
+      "file": "apps/web/src/components/MenuReview.tsx",
+      "line": 267,
+      "routeHint": "component:MenuReview",
+      "label": "Stáhnout demo MP4",
+      "href": "/api/exports/export-demo/download",
+      "typeAttr": null,
+      "disabled": false,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": [
+        "direct_api_link_needs_runtime_access_check"
+      ]
+    },
+    {
+      "kind": "link",
+      "file": "apps/web/src/components/StudioShell.tsx",
+      "line": 54,
+      "routeHint": "component:StudioShell",
+      "label": "Přihlásit se",
+      "href": "access.loginHref",
+      "typeAttr": null,
+      "disabled": false,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "link",
+      "file": "apps/web/src/components/StudioShell.tsx",
+      "line": 89,
+      "routeHint": "component:StudioShell",
+      "label": "{item.label}",
+      "href": "item.href",
+      "typeAttr": null,
+      "disabled": false,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/components/TvStudioClient.tsx",
+      "line": 30,
+      "routeHint": "component:TvStudioClient",
+      "label": "{slide.title}",
+      "href": null,
+      "typeAttr": "button",
+      "disabled": false,
+      "hasOnClick": true,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/components/TvStudioClient.tsx",
+      "line": 50,
+      "routeHint": "component:TvStudioClient",
+      "label": "Bezpečný okraj",
+      "href": null,
+      "typeAttr": "button",
+      "disabled": false,
+      "hasOnClick": true,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/components/TvStudioClient.tsx",
+      "line": 58,
+      "routeHint": "component:TvStudioClient",
+      "label": "Schválení náhledu - nenapojeno",
+      "href": null,
+      "typeAttr": "button",
+      "disabled": true,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/components/TvStudioClient.tsx",
+      "line": 98,
+      "routeHint": "component:TvStudioClient",
+      "label": "Zkrátit názvy - nenapojeno",
+      "href": null,
+      "typeAttr": "button",
+      "disabled": true,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/components/TvStudioClient.tsx",
+      "line": 101,
+      "routeHint": "component:TvStudioClient",
+      "label": "Rozdělit menu - nenapojeno",
+      "href": null,
+      "typeAttr": "button",
+      "disabled": true,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    },
+    {
+      "kind": "button",
+      "file": "apps/web/src/components/TvStudioClient.tsx",
+      "line": 104,
+      "routeHint": "component:TvStudioClient",
+      "label": "Generovat pozadí - nenapojeno",
+      "href": null,
+      "typeAttr": "button",
+      "disabled": true,
+      "hasOnClick": false,
+      "hasAriaLabel": false,
+      "targetBlank": false,
+      "rel": null,
+      "issues": []
+    }
+  ],
+  "screenshotArtifacts": [
+    {
+      "target": {
+        "id": "home",
+        "label": "Dnes / provozni dashboard",
+        "route": "/",
+        "desktopArtifact": "audit-artifacts/final-desktop-home.png",
+        "mobileArtifact": "audit-artifacts/final-mobile-home.png",
+        "mustCheck": [
+          "pravdivy demo stav",
+          "approval gate",
+          "menu kontrola",
+          "TV studio preview",
+          "zadny horizontalni overflow"
+        ]
+      },
+      "viewport": "desktop",
+      "path": "audit-artifacts/final-desktop-home.png",
+      "exists": true,
+      "dimensions": "1440x1100"
+    },
+    {
+      "target": {
+        "id": "home",
+        "label": "Dnes / provozni dashboard",
+        "route": "/",
+        "desktopArtifact": "audit-artifacts/final-desktop-home.png",
+        "mobileArtifact": "audit-artifacts/final-mobile-home.png",
+        "mustCheck": [
+          "pravdivy demo stav",
+          "approval gate",
+          "menu kontrola",
+          "TV studio preview",
+          "zadny horizontalni overflow"
+        ]
+      },
+      "viewport": "mobile",
+      "path": "audit-artifacts/final-mobile-home.png",
+      "exists": true,
+      "dimensions": "390x844"
+    },
+    {
+      "target": {
+        "id": "studio-lock",
+        "label": "Produkční studio lock",
+        "route": "env:NEXT_PUBLIC_APP_ENV=production /",
+        "desktopArtifact": "audit-artifacts/final-production-locked-studio.png",
+        "mobileArtifact": "audit-artifacts/final-production-login.png",
+        "mustCheck": [
+          "zadny demo obsah",
+          "jasny duvod locku",
+          "TV neni dotcena",
+          "login mimo StudioShell"
+        ]
+      },
+      "viewport": "desktop",
+      "path": "audit-artifacts/final-production-locked-studio.png",
+      "exists": true,
+      "dimensions": "1280x720"
+    },
+    {
+      "target": {
+        "id": "studio-lock",
+        "label": "Produkční studio lock",
+        "route": "env:NEXT_PUBLIC_APP_ENV=production /",
+        "desktopArtifact": "audit-artifacts/final-production-locked-studio.png",
+        "mobileArtifact": "audit-artifacts/final-production-login.png",
+        "mustCheck": [
+          "zadny demo obsah",
+          "jasny duvod locku",
+          "TV neni dotcena",
+          "login mimo StudioShell"
+        ]
+      },
+      "viewport": "mobile",
+      "path": "audit-artifacts/final-production-login.png",
+      "exists": true,
+      "dimensions": "1280x720"
+    },
+    {
+      "target": {
+        "id": "audit",
+        "label": "Vizuální audit 10 + 10",
+        "route": "/audit",
+        "desktopArtifact": "audit-artifacts/final-audit-desktop-viewport.png",
+        "mobileArtifact": "audit-artifacts/final-audit-mobile-viewport.png",
+        "mustCheck": [
+          "10 prezentaci",
+          "10 sablon",
+          "kritika i zlepseni",
+          "citelný prvni viewport"
+        ]
+      },
+      "viewport": "desktop",
+      "path": "audit-artifacts/final-audit-desktop-viewport.png",
+      "exists": true,
+      "dimensions": "1440x1000"
+    },
+    {
+      "target": {
+        "id": "audit",
+        "label": "Vizuální audit 10 + 10",
+        "route": "/audit",
+        "desktopArtifact": "audit-artifacts/final-audit-desktop-viewport.png",
+        "mobileArtifact": "audit-artifacts/final-audit-mobile-viewport.png",
+        "mustCheck": [
+          "10 prezentaci",
+          "10 sablon",
+          "kritika i zlepseni",
+          "citelný prvni viewport"
+        ]
+      },
+      "viewport": "mobile",
+      "path": "audit-artifacts/final-audit-mobile-viewport.png",
+      "exists": true,
+      "dimensions": "390x900"
+    },
+    {
+      "target": {
+        "id": "readiness",
+        "label": "Readiness audit",
+        "route": "/readiness",
+        "desktopArtifact": "audit-artifacts/final-readiness-desktop.png",
+        "mobileArtifact": "audit-artifacts/final-readiness-mobile.png",
+        "mustCheck": [
+          "P0/P1/P2 souhrn",
+          "gates",
+          "screenshot matrix",
+          "otevrene zbytky neprikraslene"
+        ]
+      },
+      "viewport": "desktop",
+      "path": "audit-artifacts/final-readiness-desktop.png",
+      "exists": true,
+      "dimensions": "1440x1000"
+    },
+    {
+      "target": {
+        "id": "readiness",
+        "label": "Readiness audit",
+        "route": "/readiness",
+        "desktopArtifact": "audit-artifacts/final-readiness-desktop.png",
+        "mobileArtifact": "audit-artifacts/final-readiness-mobile.png",
+        "mustCheck": [
+          "P0/P1/P2 souhrn",
+          "gates",
+          "screenshot matrix",
+          "otevrene zbytky neprikraslene"
+        ]
+      },
+      "viewport": "mobile",
+      "path": "audit-artifacts/final-readiness-mobile.png",
+      "exists": true,
+      "dimensions": "390x900"
+    },
+    {
+      "target": {
+        "id": "tv-player",
+        "label": "TV web player",
+        "route": "/tv/screen-demo",
+        "desktopArtifact": "audit-artifacts/final-desktop-tv-player.png",
+        "mobileArtifact": "audit-artifacts/final-mobile-tv-player.png",
+        "mustCheck": [
+          "realne MP4 video",
+          "portrait warning",
+          "production no-token error",
+          "offline fallback pri chybe",
+          "zadne UI prekazky pres video"
+        ]
+      },
+      "viewport": "desktop",
+      "path": "audit-artifacts/final-desktop-tv-player.png",
+      "exists": true,
+      "dimensions": "1920x1080"
+    },
+    {
+      "target": {
+        "id": "tv-player",
+        "label": "TV web player",
+        "route": "/tv/screen-demo",
+        "desktopArtifact": "audit-artifacts/final-desktop-tv-player.png",
+        "mobileArtifact": "audit-artifacts/final-mobile-tv-player.png",
+        "mustCheck": [
+          "realne MP4 video",
+          "portrait warning",
+          "production no-token error",
+          "offline fallback pri chybe",
+          "zadne UI prekazky pres video"
+        ]
+      },
+      "viewport": "mobile",
+      "path": "audit-artifacts/final-mobile-tv-player.png",
+      "exists": true,
+      "dimensions": "390x844"
+    },
+    {
+      "target": {
+        "id": "worker-render",
+        "label": "Worker smoke MP4 export",
+        "route": "worker:smoke-render",
+        "desktopArtifact": "audit-artifacts/final-smoke-render-frame.png",
+        "mobileArtifact": "audit-artifacts/final-smoke-render.mp4",
+        "mustCheck": [
+          "H.264",
+          "yuv420p",
+          "1920x1080",
+          "30fps",
+          "AAC stereo",
+          "27s duration"
+        ]
+      },
+      "viewport": "desktop",
+      "path": "audit-artifacts/final-smoke-render-frame.png",
+      "exists": true,
+      "dimensions": "1920x1080"
+    },
+    {
+      "target": {
+        "id": "worker-render",
+        "label": "Worker smoke MP4 export",
+        "route": "worker:smoke-render",
+        "desktopArtifact": "audit-artifacts/final-smoke-render-frame.png",
+        "mobileArtifact": "audit-artifacts/final-smoke-render.mp4",
+        "mustCheck": [
+          "H.264",
+          "yuv420p",
+          "1920x1080",
+          "30fps",
+          "AAC stereo",
+          "27s duration"
+        ]
+      },
+      "viewport": "mobile",
+      "path": "audit-artifacts/final-smoke-render.mp4",
+      "exists": true,
+      "dimensions": null
+    }
+  ]
+}

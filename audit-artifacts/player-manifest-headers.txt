@@ -1,0 +1,8 @@
+HTTP/1.1 200 OK
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+cache-control: no-store
+content-type: application/json
+Date: Mon, 06 Jul 2026 09:26:19 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked

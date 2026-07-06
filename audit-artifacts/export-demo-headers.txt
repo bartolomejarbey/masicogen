@@ -1,0 +1,9 @@
+HTTP/1.1 200 OK
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+cache-control: no-store
+content-disposition: attachment; filename="masico-demo-loop.mp4"
+content-length: 1302164
+content-type: video/mp4
+Date: Mon, 06 Jul 2026 09:20:03 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5

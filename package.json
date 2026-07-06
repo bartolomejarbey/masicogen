@@ -1,0 +1,27 @@
+{
+  "name": "masico-tv-studio",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @masico/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm --filter @masico/web lint",
+    "test": "pnpm -r test",
+    "worker:dev": "pnpm --filter @masico/worker dev",
+    "worker:smoke-render": "WORKER_SMOKE_RENDER=1 pnpm --filter @masico/worker dev",
+    "audit:readiness": "tsx scripts/readiness-report.ts",
+    "audit:ui": "tsx scripts/ui-audit-report.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@vercel/config": "^0.5.5",
+    "typescript": "^5.9.0",
+    "tsx": "^4.20.0",
+    "vitest": "^4.0.0"
+  }
+}

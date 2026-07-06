@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build outputs
+.next/
+out/
+dist/
+coverage/
+.turbo/
+.vercel/
+*.tsbuildinfo
+
+# local env and secrets
+.env*.local
+.env.local
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+
+# worker temp files
+tmp/
+render-output/

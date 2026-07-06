@@ -1,0 +1,198 @@
+[
+  {
+    "disabled": false,
+    "href": "#",
+    "tag": "a",
+    "text": "Dnes",
+    "type": null
+  },
+  {
+    "disabled": false,
+    "href": "#",
+    "tag": "a",
+    "text": "Menu",
+    "type": null
+  },
+  {
+    "disabled": false,
+    "href": "#",
+    "tag": "a",
+    "text": "TV Studio",
+    "type": null
+  },
+  {
+    "disabled": false,
+    "href": "#",
+    "tag": "a",
+    "text": "Schválení",
+    "type": null
+  },
+  {
+    "disabled": false,
+    "href": "#",
+    "tag": "a",
+    "text": "Média",
+    "type": null
+  },
+  {
+    "disabled": false,
+    "href": "#",
+    "tag": "a",
+    "text": "Exporty",
+    "type": null
+  },
+  {
+    "disabled": false,
+    "href": "#",
+    "tag": "a",
+    "text": "Archiv",
+    "type": null
+  },
+  {
+    "disabled": false,
+    "href": "#",
+    "tag": "a",
+    "text": "Nastavení",
+    "type": null
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Duplikovat včerejšek",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Importovat menu",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Schválit",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Publikovat",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Schválit",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Publikovat",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Schválit",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Publikovat",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": "/tv/screen-demo",
+    "tag": "a",
+    "text": "Otevřít TV player",
+    "type": null
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Stáhnout MP4",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Obnovit poslední",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Naplánovat týden",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Dnešní menu",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Special menu",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Alergenová legenda",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Safe zóna",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Schválit náhled",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Zkrátit názvy pro TV",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Rozdělit dlouhé menu",
+    "type": "button"
+  },
+  {
+    "disabled": false,
+    "href": null,
+    "tag": "button",
+    "text": "Vygenerovat background",
+    "type": "button"
+  }
+]
