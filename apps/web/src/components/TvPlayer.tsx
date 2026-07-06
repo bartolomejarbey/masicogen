@@ -132,7 +132,7 @@ export function TvPlayer({ allowDemoFallback = false, screenId }: TvPlayerProps)
         />
       ) : manifest?.mode === "live" && !videoError ? (
         <div className="player-fallback">
-          <LiveTvLoop manifest={manifest} />
+          <LiveTvLoop key={manifest.versionId} manifest={manifest} />
         </div>
       ) : allowDemoFallback ? (
         <div className="player-fallback">
@@ -156,7 +156,6 @@ function LiveTvLoop({ manifest }: { manifest: Extract<PlayerPayload, { mode: "li
 
   useEffect(() => {
     if (manifest.deck.slides.length <= 1) {
-      setActiveSlideId(manifest.deck.slides[0]?.id);
       return;
     }
 

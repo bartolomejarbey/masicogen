@@ -1,10 +1,7 @@
-import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { buildTextMenuImportPayload } from "@/lib/menu-import";
 import { generateAndStoreBackground } from "@/lib/background-assets";
 import { approvalRpcStatus } from "@/lib/approval-api";
-import { buildScreenPairingPayload } from "@/lib/screen-pairing";
-import { hashToken } from "@/lib/security";
 import { requireStudioApiAccess } from "@/lib/studio-auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
@@ -14,8 +11,7 @@ const todayLaunchRequestSchema = z.object({
   canteenId: z.string().uuid(),
   menuDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   sourceText: z.string().trim().min(10).max(20000),
-  screenId: z.string().uuid().optional(),
-  screenName: z.string().trim().min(1).max(80).default("MASI-CO TV"),
+  screenId: z.string().uuid(),
   backgroundPrompt: z.string().trim().min(12).max(1200).optional(),
   backgroundQuality: z.enum(["draft", "final"]).default("draft"),
   backgroundAssetId: z.string().uuid().optional(),
@@ -49,6 +45,8 @@ type PublishLiveRpcRow = {
 
 type ScreenRow = {
   id: string;
+  status: string;
+  name: string;
 };
 
 export const runtime = "nodejs";
@@ -113,6 +111,35 @@ export async function POST(request: Request) {
       },
       { status: 422 }
     );
+  }
+
+  const blockingIssues = payload.issues.filter((issue) => issue.severity === "error");
+  if (blockingIssues.length > 0) {
+    return Response.json(
+      {
+        error: "Před odesláním na TV opravte chybějící cenu nebo alergeny.",
+        code: "today_launch_menu_validation_failed",
+        issues: blockingIssues.map((issue) => ({
+          code: issue.code,
+          message: issue.message
+        })),
+        warnings: payload.menu.warnings
+      },
+      { status: 422 }
+    );
+  }
+
+  const screenId = await resolveLaunchScreen({
+    orgId: access.orgId,
+    locationId: parsedBody.data.locationId,
+    canteenId: parsedBody.data.canteenId,
+    screenId: parsedBody.data.screenId
+  }).catch((error: unknown) =>
+    launchStepError("TV obrazovku se nepodařilo připravit", "today_launch_screen_failed", error, 422)
+  );
+
+  if (screenId instanceof Response) {
+    return screenId;
   }
 
   const background = await resolveBackgroundAsset({
@@ -185,46 +212,6 @@ export async function POST(request: Request) {
     return rpcError("Schválení TV smyčky selhalo", "today_launch_deck_approval_failed", approvedDeck.error);
   }
 
-  const screenId = await upsertLaunchScreen({
-    orgId: access.orgId,
-    locationId: parsedBody.data.locationId,
-    canteenId: parsedBody.data.canteenId,
-    screenId: parsedBody.data.screenId,
-    screenName: parsedBody.data.screenName
-  }).catch((error: unknown) =>
-    launchStepError("TV obrazovku se nepodařilo připravit", "today_launch_screen_failed", error, 500)
-  );
-
-  if (screenId instanceof Response) {
-    return screenId;
-  }
-
-  const rawToken = randomBytes(24).toString("base64url");
-  const pairing = buildScreenPairingPayload({
-    requestUrl: request.url,
-    orgId: access.orgId,
-    screenId,
-    screenName: parsedBody.data.screenName,
-    locationId: parsedBody.data.locationId,
-    canteenId: parsedBody.data.canteenId,
-    rawToken,
-    expiresInMinutes: 7 * 24 * 60,
-    persisted: true
-  });
-
-  const rotatedToken = await rotateScreenToken({
-    orgId: access.orgId,
-    screenId,
-    tokenHash: hashToken(rawToken),
-    expiresAt: pairing.expiresAt
-  }).catch((error: unknown) =>
-    launchStepError("TV token se nepodařilo uložit", "today_launch_screen_token_failed", error, 500)
-  );
-
-  if (rotatedToken instanceof Response) {
-    return rotatedToken;
-  }
-
   const published = await supabase.rpc("publish_live_deck_to_screen", {
     target_screen_id: screenId,
     target_deck_version_id: deckResult.deck_version_id,
@@ -254,10 +241,7 @@ export async function POST(request: Request) {
     screenId,
     publishEventId: publishResult.publish_event_id,
     publishedAt: publishResult.published_at,
-    playerUrl: pairing.activationUrl,
-    deviceToken: pairing.deviceToken,
-    tokenPreview: pairing.tokenPreview,
-    expiresAt: pairing.expiresAt,
+    playerUrl: new URL(`/tv/${screenId}`, request.url).toString(),
     background,
     itemCount: payload.itemCount,
     warningCount: payload.warningCount,
@@ -288,109 +272,39 @@ async function resolveBackgroundAsset(input: {
   });
 }
 
-async function upsertLaunchScreen(input: {
+async function resolveLaunchScreen(input: {
   orgId: string;
   locationId: string;
   canteenId: string;
-  screenId?: string;
-  screenName: string;
+  screenId: string;
 }) {
   const admin = getSupabaseAdmin();
   if (!admin) {
     throw new Error("Supabase service role is not configured.");
   }
 
-  if (input.screenId) {
-    const { data, error } = await admin
-      .from("screens")
-      .update({
-        location_id: input.locationId,
-        canteen_id: input.canteenId,
-        name: input.screenName,
-        status: "paired"
-      })
-      .eq("org_id", input.orgId)
-      .eq("id", input.screenId)
-      .select("id")
-      .single<ScreenRow>();
-
-    if (error) {
-      throw new Error(`Aktualizace TV obrazovky selhala: ${error.message}`);
-    }
-
-    return data.id;
-  }
-
-  const existing = await admin
+  const { data, error } = await admin
     .from("screens")
-    .select("id")
+    .select("id, status, name")
     .eq("org_id", input.orgId)
+    .eq("id", input.screenId)
     .eq("location_id", input.locationId)
     .eq("canteen_id", input.canteenId)
-    .order("created_at", { ascending: true })
-    .limit(1)
     .maybeSingle<ScreenRow>();
 
-  if (existing.error) {
-    throw new Error(`Vyhledání TV obrazovky selhalo: ${existing.error.message}`);
+  if (error) {
+    throw new Error(`Vyhledání TV obrazovky selhalo: ${error.message}`);
   }
 
-  if (existing.data) {
-    return existing.data.id;
+  if (!data) {
+    throw new Error("Vybraná TV nepatří k této jídelně. Vyberte spárovanou TV v nastavení.");
   }
 
-  const inserted = await admin
-    .from("screens")
-    .insert({
-      org_id: input.orgId,
-      location_id: input.locationId,
-      canteen_id: input.canteenId,
-      name: input.screenName,
-      status: "paired"
-    })
-    .select("id")
-    .single<ScreenRow>();
-
-  if (inserted.error) {
-    throw new Error(`Vytvoření TV obrazovky selhalo: ${inserted.error.message}`);
+  if (data.status === "unpaired") {
+    throw new Error(`TV "${data.name}" ještě není spárovaná. Nejdřív ji spárujte v nastavení.`);
   }
 
-  return inserted.data.id;
-}
-
-async function rotateScreenToken(input: {
-  orgId: string;
-  screenId: string;
-  tokenHash: string;
-  expiresAt: string;
-}) {
-  const admin = getSupabaseAdmin();
-  if (!admin) {
-    throw new Error("Supabase service role is not configured.");
-  }
-
-  const now = new Date().toISOString();
-  const revoked = await admin
-    .from("screen_tokens")
-    .update({ revoked_at: now })
-    .eq("org_id", input.orgId)
-    .eq("screen_id", input.screenId)
-    .is("revoked_at", null);
-
-  if (revoked.error) {
-    throw new Error(`Rotace TV tokenu selhala: ${revoked.error.message}`);
-  }
-
-  const inserted = await admin.from("screen_tokens").insert({
-    org_id: input.orgId,
-    screen_id: input.screenId,
-    token_hash: input.tokenHash,
-    expires_at: input.expiresAt
-  });
-
-  if (inserted.error) {
-    throw new Error(`Uložení TV tokenu selhalo: ${inserted.error.message}`);
-  }
+  return data.id;
 }
 
 function rpcError(title: string, code: string, error: { code?: string; message: string }) {

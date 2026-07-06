@@ -23,8 +23,8 @@ Smažený vepřový řízek, bramborový salát 159 Kč alergeny 1, 3, 7, 10
 Hovězí guláš, houskový knedlík 149 Kč al. 1, 3, 7`;
 
 export function MenuReview() {
-  const [sourceText, setSourceText] = useState(defaultSourceText);
-  const [menu, setMenu] = useState<MenuExtractionResult>(() => parsePastedMenuText(defaultSourceText));
+  const [sourceText, setSourceText] = useState("");
+  const [menu, setMenu] = useState<MenuExtractionResult>(() => parsePastedMenuText(""));
   const [manualApprovals, setManualApprovals] = useState<ManualApprovalState>({});
   const issues = useMemo(() => validateMenuForApproval(menu), [menu]);
   const publishReadiness = useMemo(
@@ -47,13 +47,22 @@ export function MenuReview() {
     () => Array.from(new Set([...menu.warnings, ...issues.map((issue) => issue.message)])),
     [issues, menu.warnings]
   );
+  const itemCount = countItems(menu);
+  const hasParsedItems = itemCount > 0;
+  const nextStep = getMenuReviewNextStep({
+    itemCount,
+    blockingIssueCount: blockingIssues.length,
+    warningCount: reviewWarnings.length - blockingIssues.length,
+    canPublish: publishReadiness.canPublish,
+    pendingStepCount: publishReadiness.steps.filter((step) => step.status !== "approved").length
+  });
 
   function parseCurrentText() {
     setMenu(parsePastedMenuText(sourceText));
     setManualApprovals({});
   }
 
-  function resetDemo() {
+  function loadDemo() {
     setSourceText(defaultSourceText);
     setMenu(parsePastedMenuText(defaultSourceText));
     setManualApprovals({});
@@ -70,17 +79,19 @@ export function MenuReview() {
     <section className="grid">
       <div className="topbar" style={{ marginBottom: 0 }}>
         <div>
-          <p className="eyebrow">Import textu · kontrola jídelníčku</p>
-          <h2 className="card-title">Paste menu → strukturovaná kontrola cen a alergenů</h2>
+          <p className="eyebrow">Kontrola jídelníčku</p>
+          <h2 className="card-title">Vložit dnešní jídelníček</h2>
         </div>
-        <StatusBadge tone={blockingIssues.length === 0 ? "good" : "critical"}>
-          {blockingIssues.length === 0
-            ? "Lokální parser prošel - není schváleno"
-            : `Blokuje ${blockingIssues.length} ověření`}
+        <StatusBadge tone={!hasParsedItems ? "info" : blockingIssues.length === 0 ? "good" : "critical"}>
+          {hasParsedItems
+            ? blockingIssues.length === 0
+              ? "Zkontrolováno - čeká na potvrzení"
+              : `Opravit ${blockingIssues.length} položky`
+            : "Čeká na vložení"}
         </StatusBadge>
       </div>
 
-      <div className="split">
+      <div className={`split ${hasParsedItems ? "" : "single"}`}>
         <form
           className="card pad import-panel"
           onSubmit={(event) => {
@@ -89,49 +100,60 @@ export function MenuReview() {
           }}
         >
           <label htmlFor="menu-source">Zdrojový text z denního jídelníčku</label>
+          <div className="actions import-actions-top">
+            <button className="button primary" disabled={sourceText.trim().length === 0} type="submit">
+              <WandSparkles size={18} aria-hidden="true" />
+              Zkontrolovat menu
+            </button>
+            <button className="button" onClick={loadDemo} type="button">
+              <RotateCcw size={18} aria-hidden="true" />
+              Načíst ukázku
+            </button>
+          </div>
           <textarea
             id="menu-source"
-            onChange={(event) => setSourceText(event.target.value)}
+            onChange={(event) => {
+              setSourceText(event.target.value);
+              setMenu(parsePastedMenuText(""));
+              setManualApprovals({});
+            }}
+            placeholder="Vložte sem celý text menu. Kontrola připraví náhled, na TV se nic nepošle."
             rows={12}
             value={sourceText}
           />
           <div className="actions">
-            <button className="button primary" type="submit">
+            <button className="button primary" disabled={sourceText.trim().length === 0} type="submit">
               <WandSparkles size={18} aria-hidden="true" />
-              Zpracovat lokálně
+              Zkontrolovat menu
             </button>
-            <button className="button" onClick={resetDemo} type="button">
+            <button className="button" onClick={loadDemo} type="button">
               <RotateCcw size={18} aria-hidden="true" />
-              Vrátit ukázku
+              Načíst ukázku
             </button>
           </div>
           <div className="source-safety-note">
             <FileText size={17} aria-hidden="true" />
             <span>
-              Text se bere jako nedůvěryhodný zdroj. Parser nevymýšlí chybějící ceny ani alergeny.
+              Bezpečné: kontrola jen připraví náhled. Chybějící ceny ani alergeny se nevymýšlí.
             </span>
           </div>
         </form>
 
-        <div className="card table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Sekce</th>
-                <th>Jídlo</th>
-                <th>Cena</th>
-                <th>Alergeny</th>
-                <th>Jistota</th>
-                <th>Kontrola</th>
-              </tr>
-            </thead>
-            <tbody>
-              {menu.sections.length === 0 ? (
+        {hasParsedItems ? (
+          <div className="card table-wrap">
+            <table className="table">
+              <thead>
                 <tr>
-                  <td colSpan={6}>Zatím není rozpoznaná žádná položka.</td>
+                  <th>Sekce</th>
+                  <th>Jídlo</th>
+                  <th>Cena</th>
+                  <th>Alergeny</th>
+                  <th>Jistota</th>
+                  <th>Kontrola</th>
                 </tr>
-              ) : (
-                menu.sections.flatMap((section) =>
+              </thead>
+              <tbody>
+                {menu.sections.flatMap((section) =>
                   section.items.map((item) => (
                     <tr key={item.id}>
                       <td>{section.name}</td>
@@ -158,28 +180,77 @@ export function MenuReview() {
                       <td>{Math.round(item.confidence * 100)} %</td>
                       <td>
                         {item.prices[0]?.amount !== null && !item.allergensUnknown ? (
-                          <StatusBadge tone="warn">Rozpoznáno - ověřit</StatusBadge>
+                          <StatusBadge tone="warn">Zkontrolovat</StatusBadge>
                         ) : (
                           <StatusBadge tone="critical">Opravit</StatusBadge>
                         )}
                       </td>
                     </tr>
                   ))
-                )
+                )}
+              </tbody>
+            </table>
+            <div className="mobile-menu-result-list">
+              {menu.sections.flatMap((section) =>
+                section.items.map((item) => (
+                  <article className="mobile-menu-result" key={`mobile-${item.id}`}>
+                    <div>
+                      <span>{section.name}</span>
+                      <strong>{item.name}</strong>
+                      {item.shortName && item.shortName !== item.name ? (
+                        <small>TV: {item.shortName}</small>
+                      ) : null}
+                    </div>
+                    <dl>
+                      <div>
+                        <dt>Cena</dt>
+                        <dd>{formatCzk(item.prices[0]?.amount ?? null)}</dd>
+                      </div>
+                      <div>
+                        <dt>Alergeny</dt>
+                        <dd>
+                          <div className="chip-row">
+                            {item.allergens.length > 0 ? (
+                              item.allergens.map((code) => (
+                                <span className="chip" key={`mobile-${item.id}-${code}`}>
+                                  {getAllergenLabel(code)}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="chip warn-chip">K ověření</span>
+                            )}
+                          </div>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Kontrola</dt>
+                        <dd>
+                          {item.prices[0]?.amount !== null && !item.allergensUnknown ? (
+                            <StatusBadge tone="warn">Zkontrolovat</StatusBadge>
+                          ) : (
+                            <StatusBadge tone="critical">Opravit</StatusBadge>
+                          )}
+                        </dd>
+                      </div>
+                    </dl>
+                  </article>
+                ))
               )}
-            </tbody>
-          </table>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {hasParsedItems ? (
+        <div className="grid cols-3">
+          <AuditSummaryCard label="Položky" value={itemCount} tone="info" />
+          <AuditSummaryCard label="Blokující chyby" value={blockingIssues.length} tone="critical" />
+          <AuditSummaryCard label="Varování" value={reviewWarnings.length - blockingIssues.length} tone="warn" />
         </div>
-      </div>
+      ) : null}
 
-      <div className="grid cols-3">
-        <AuditSummaryCard label="Položky" value={countItems(menu)} tone="info" />
-        <AuditSummaryCard label="Blokující chyby" value={blockingIssues.length} tone="critical" />
-        <AuditSummaryCard label="Varování" value={reviewWarnings.length - blockingIssues.length} tone="warn" />
-      </div>
-
-      {reviewWarnings.length > 0 ? (
-        <div className="card pad">
+      {hasParsedItems && reviewWarnings.length > 0 ? (
+        <div className="card pad" aria-live="polite" role="status">
           <p className="eyebrow">Co musí člověk zkontrolovat</p>
           <ul className="review-warning-list">
             {reviewWarnings.map((warning) => (
@@ -189,14 +260,22 @@ export function MenuReview() {
         </div>
       ) : null}
 
+      <article className={`next-step-card ${nextStep.tone}`} aria-live="polite" role="status">
+        <div>
+          <p className="eyebrow">Další krok</p>
+          <h3>{nextStep.title}</h3>
+          <p>{nextStep.copy}</p>
+        </div>
+      </article>
+
+      {hasParsedItems ? (
       <article className="card pad approval-panel">
-        <div className="topbar">
+          <div className="topbar">
           <div>
-            <p className="eyebrow">Ruční schválení</p>
-            <h2 className="card-title">Gate před publikací</h2>
+            <p className="eyebrow">Potvrzení</p>
+            <h2 className="card-title">Před puštěním na TV</h2>
             <p className="muted">
-              Neuloženo. Nepublikováno. Každá změna textu resetuje ruční potvrzení obsahu,
-              layoutu i exportu.
+              Každá změna textu znovu vyžaduje potvrzení obsahu, vzhledu a zálohy.
             </p>
           </div>
           <StatusBadge tone={getReadinessTone(publishReadiness.status)}>
@@ -225,7 +304,7 @@ export function MenuReview() {
                   type="checkbox"
                 />
                 <span>
-                  Ručně potvrzuji jako role {step.requiredRole}.{" "}
+                  {step.label}: zkontrolováno.{" "}
                   {step.status === "blocked" ? "Nejdřív opravte blokující chyby." : null}
                 </span>
               </label>
@@ -246,10 +325,10 @@ export function MenuReview() {
 
         <div className="approval-summary">
           <div>
-            <strong>{publishReadiness.nextAction}</strong>
+            <strong>{formatApprovalNextAction(publishReadiness.nextAction)}</strong>
             <ul>
               {publishReadiness.auditTrail.map((line) => (
-                <li key={line}>{line}</li>
+                <li key={line}>{formatAuditLine(line)}</li>
               ))}
             </ul>
           </div>
@@ -257,8 +336,8 @@ export function MenuReview() {
             <button className="button" disabled type="button">
               <CheckSquare size={18} aria-hidden="true" />
               {publishReadiness.canPublish
-                ? "Publikovat - čeká na produkční RPC"
-                : "Publikovat - čeká na schválení"}
+                ? "Pustit na TV - demo režim"
+                : "Pustit na TV - čeká na potvrzení"}
             </button>
             <a className="button" href="/tv/screen-demo" rel="noreferrer" target="_blank">
               <MonitorPlay size={18} aria-hidden="true" />
@@ -271,6 +350,7 @@ export function MenuReview() {
           </div>
         </div>
       </article>
+      ) : null}
     </section>
   );
 }
@@ -326,4 +406,62 @@ function getStepLabel(status: "blocked" | "pending" | "approved") {
   }
 
   return status === "blocked" ? "Blokováno" : "K potvrzení";
+}
+
+function formatApprovalNextAction(nextAction: string) {
+  if (nextAction.includes("Doplňte ruční potvrzení")) {
+    return "Doplňte chybějící potvrzení před odesláním na TV.";
+  }
+
+  if (nextAction.includes("Checklist je splněný")) {
+    return "Kontrola je hotová. V ostrém režimu půjde menu odeslat na TV.";
+  }
+
+  return nextAction;
+}
+
+function formatAuditLine(line: string) {
+  return line
+    .replace("ručně schváleno rolí approver", "ručně potvrzeno")
+    .replace("ručně schváleno rolí publisher", "ručně potvrzeno")
+    .replace("blokováno validací, publish nesmí pokračovat", "čeká na opravu")
+    .replace("validace prošla, čeká na ruční potvrzení", "kontrola prošla, čeká na potvrzení");
+}
+
+function getMenuReviewNextStep(input: {
+  itemCount: number;
+  blockingIssueCount: number;
+  warningCount: number;
+  canPublish: boolean;
+  pendingStepCount: number;
+}) {
+  if (input.itemCount === 0) {
+    return {
+      tone: "warn",
+      title: "Vložte jídelníček",
+      copy: "Zatím není co kontrolovat. Vložte text menu nebo načtěte ukázku."
+    };
+  }
+
+  if (input.blockingIssueCount > 0) {
+    return {
+      tone: "critical",
+      title: "Opravte položky v menu",
+      copy: `Blokující chyby: ${input.blockingIssueCount}. Po opravě znovu spusťte kontrolu menu.`
+    };
+  }
+
+  if (input.pendingStepCount > 0) {
+    return {
+      tone: "warn",
+      title: "Doplňte potvrzení",
+      copy: `Menu má ${input.itemCount} položky. Chybí potvrdit ${input.pendingStepCount} kontroly před TV.`
+    };
+  }
+
+  return {
+    tone: input.warningCount > 0 ? "warn" : "good",
+    title: input.canPublish ? "Připraveno k odeslání na TV" : "Kontrola je hotová",
+    copy: `${input.blockingIssueCount} blokujících chyb, ${input.warningCount} varování.`
+  };
 }

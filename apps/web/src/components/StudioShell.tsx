@@ -1,29 +1,21 @@
 import {
-  Archive,
   Bot,
   CheckSquare,
-  Clapperboard,
-  Download,
   Home,
-  Image,
   MonitorPlay,
   Settings,
-  ShieldAlert,
-  Utensils
+  ShieldAlert
 } from "lucide-react";
 import Link from "next/link";
 import { getStudioAccessState, type StudioAccessRole, type StudioAccessState } from "@/lib/studio-auth";
 
 const navItems = [
   { label: "Dnes", icon: Home, section: "today", href: "/" },
-  { label: "Vizuální audit", icon: CheckSquare, section: "audit", href: "/audit" },
-  { label: "Readiness", icon: ShieldAlert, section: "readiness", href: "/readiness" },
-  { label: "Menu", icon: Utensils, href: "/#menu" },
-  { label: "TV Studio", icon: Clapperboard, href: "/#tv-studio" },
-  { label: "Schválení", icon: CheckSquare, href: "/#schvaleni" },
-  { label: "Média", icon: Image, href: "/#media" },
-  { label: "Exporty", icon: Download, href: "/#exporty" },
-  { label: "Archiv", icon: Archive, href: "/#archiv" },
+  { label: "Kontrola vzhledu", icon: CheckSquare, section: "audit", href: "/audit" }
+];
+
+const adminNavItems = [
+  { label: "Stav systému", icon: ShieldAlert, section: "readiness", href: "/readiness" },
   { label: "Nastavení", icon: Settings, href: "/#nastaveni" }
 ];
 
@@ -37,6 +29,8 @@ export async function StudioShell({
   children: React.ReactNode;
 }) {
   const access = providedAccess ?? (await getStudioAccessState());
+  const showAdminNav =
+    access.mode !== "authenticated" || access.role === "owner" || access.role === "admin";
 
   if (access.mode === "locked") {
     return (
@@ -92,16 +86,36 @@ export async function StudioShell({
             );
           })}
         </nav>
-        <div className="sidebar-meta" style={{ marginTop: 28 }}>
-          <div className="nav-item">
-            <MonitorPlay size={18} aria-hidden="true" />
-            tv.masi-co-food.cz
-          </div>
-          <div className="nav-item">
-            <Bot size={18} aria-hidden="true" />
-            {access.mode === "authenticated"
-              ? `Přihlášeno: ${getRoleLabel(access.role)}`
-              : "AI asistent: demo návrhy"}
+        <div className="sidebar-admin">
+          {showAdminNav ? (
+            <>
+              <p>Správa</p>
+              <nav className="nav" aria-label="Správa">
+                {adminNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = item.section === activeSection;
+
+                  return (
+                    <Link className={`nav-item ${isActive ? "active" : ""}`} href={item.href} key={item.label}>
+                      <Icon size={18} aria-hidden="true" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </>
+          ) : null}
+          <div className="sidebar-meta">
+            <div className="nav-item">
+              <MonitorPlay size={18} aria-hidden="true" />
+              tv.masi-co-food.cz
+            </div>
+            <div className="nav-item">
+              <Bot size={18} aria-hidden="true" />
+              {access.mode === "authenticated"
+                ? `Přihlášeno: ${getRoleLabel(access.role)}`
+                : "AI asistent: demo návrhy"}
+            </div>
           </div>
         </div>
       </aside>
@@ -124,13 +138,13 @@ function getLockedReasonLabel(reason: "auth_not_configured" | "unauthenticated" 
 
 function getRoleLabel(role: StudioAccessRole) {
   const labels: Record<StudioAccessRole, string> = {
-    owner: "owner",
+    owner: "vlastník",
     admin: "admin",
     editor: "editor",
-    designer: "designer",
-    approver: "approver",
-    publisher: "publisher",
-    viewer: "viewer"
+    designer: "designér",
+    approver: "schvalovatel",
+    publisher: "publikující",
+    viewer: "náhled"
   };
 
   return labels[role];

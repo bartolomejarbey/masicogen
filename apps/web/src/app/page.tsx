@@ -3,16 +3,12 @@ import {
   CalendarPlus,
   CheckSquare,
   Clapperboard,
-  Copy,
   Database,
   Download,
-  FileUp,
   Image as ImageIcon,
   MonitorPlay,
   RotateCcw,
   Settings,
-  ShieldCheck,
-  Sparkles,
   Utensils
 } from "lucide-react";
 import { demoDeck, demoMenu, formatCzechDate } from "@masico/shared";
@@ -33,31 +29,31 @@ export const dynamic = "force-dynamic";
 const locations = [
   {
     name: "Jídelna MASI-CO",
-    status: "Demo data - not live",
+    status: "Ukázka",
     tone: "warn" as const,
-    tv: "Nepřipojeno k reálné obrazovce",
-    published: "Produkční publikace: zatím žádná",
+    tv: "Ukázková TV není připojená",
+    published: "Zatím nic",
     action: "Zkontrolovat demo menu",
     actionDisabled: false,
     actionHref: "#kontrola-menu"
   },
   {
     name: "Výdejna výroba",
-    status: "Demo data - not live",
+    status: "Ukázka",
     tone: "info" as const,
-    tv: "Nepřipojeno k reálné obrazovce",
-    published: "Produkční publikace: zatím žádná",
-    action: "Publikace - nenapojeno",
+    tv: "Ukázková TV není připojená",
+    published: "Zatím nic",
+    action: "V ukázce vypnuto",
     actionDisabled: true,
     actionHref: null
   },
   {
     name: "Záložní obrazovka",
-    status: "Demo problém - not live",
+    status: "Ukázkový problém",
     tone: "critical" as const,
-    tv: "Nepárováno s reálnou TV",
-    published: "Produkční publikace: zatím žádná",
-    action: "Diagnostika - nenapojeno",
+    tv: "TV není spárovaná",
+    published: "Zatím nic",
+    action: "V ukázce vypnuto",
     actionDisabled: true,
     actionHref: null
   }
@@ -89,143 +85,139 @@ function LocalDemoHome() {
       <div className="topbar">
         <div>
           <p className="eyebrow">Dnes · {formatCzechDate(demoMenu.date)}</p>
-          <h1 className="page-title">Ukázkové dnešní menu pro TV</h1>
+          <h1 className="page-title">Ukázkový režim TV Studia</h1>
           <p className="page-copy">
-            Nahrajte jídelníček, ověřte ceny a alergeny, zkontrolujte náhled
-            obrazovky a teprve potom odešlete dnešní smyčku na TV.
+            Vyzkoušejte vložení jídelníčku, kontrolu cen a alergenů a náhled obrazovky.
+            V ukázce se nic neodešle na TV.
           </p>
-        </div>
-        <div className="actions">
-          <button className="button" disabled type="button">
-            <Copy size={18} aria-hidden="true" />
-            Použít včerejšek - nenapojeno
-          </button>
-          <a className="button primary" href="#kontrola-menu">
-            <FileUp size={18} aria-hidden="true" />
-            Vyzkoušet vložení textu
-          </a>
         </div>
       </div>
 
       <section className="demo-banner" aria-label="Demo režim">
-        <strong>DEMO / nenapojeno na produkční data</strong>
+        <strong>DEMO / ukázková data</strong>
         <span>
-          Obrazovky níže používají ukázkový jídelníček. Produkční API cesty bez
-          reálného Supabase/worker napojení v production režimu selžou bezpečně
-          s kódem <code>integration_required</code>. Nic se zde neuloží ani nepublikuje.
+          Obrazovky níže používají ukázkový jídelníček. Nic se zde neuloží ani neodešle na TV.
         </span>
       </section>
 
-      <section className="grid cols-3" aria-label="Stav provozoven">
-        {locations.map((location) => (
-          <article className="card pad" key={location.name}>
-            <div className="topbar" style={{ marginBottom: 12 }}>
-              <h2 className="card-title">{location.name}</h2>
-              <StatusBadge tone={location.tone}>{location.status}</StatusBadge>
-            </div>
-            <p className="muted">TV: {location.tv}</p>
-            <p className="muted">Poslední publikace: {location.published}</p>
-            <div className="actions" style={{ marginTop: 18 }}>
-              {location.actionHref ? (
-                <a className="button primary" href={location.actionHref}>
-                  <CheckSquare size={17} aria-hidden="true" />
-                  {location.action}
-                </a>
-              ) : (
-                <button className="button primary" disabled={location.actionDisabled} type="button">
-                  <CheckSquare size={17} aria-hidden="true" />
-                  {location.action}
-                </button>
-              )}
-            </div>
-          </article>
-        ))}
-      </section>
-
-      <section className="grid cols-dashboard" style={{ marginTop: 20 }}>
-        <article className="card pad">
-          <p className="eyebrow">Postup</p>
-          <h2 className="card-title">Co musí být hotové před odesláním na TV</h2>
-          <div className="grid" style={{ marginTop: 18 }}>
-            {[
-              ["1", "Vložit text menu", "Text ze stolu nebo PDF přepsaný do pole níže."],
-              ["2", "Zkontrolovat ceny", "Parser navrhne data, člověk potvrdí fakta."],
-              ["3", "Zkontrolovat TV náhled", "Systém hlídá bezpečný okraj a čitelnost."],
-              ["4", "Publikování zatím nenapojeno", "Produkční odeslání bude dostupné až po Supabase RPC, workeru, párování TV a audit logu."]
-            ].map(([step, title, copy]) => (
-              <div
-                key={step}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "44px 1fr",
-                  gap: 12,
-                  alignItems: "center"
-                }}
-              >
-                <span className="brand-mark" style={{ width: 40, height: 40 }}>
-                  {step}
-                </span>
-                <div>
-                  <strong>{title}</strong>
-                  <div className="muted">{copy}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="card pad">
-          <p className="eyebrow">TV smyčka</p>
-          <h2 className="card-title">Demo smyčka</h2>
-          <p className="muted">
-            Ukázková smyčka má {demoDeck.slides.length} obrazovky a délku přibližně{" "}
-            {Math.round(
-              demoDeck.slides.reduce((total, slide) => total + slide.durationFrames, 0) /
-                demoDeck.fps
-            )}{" "}
-            sekund.
-          </p>
-          <p className="muted">
-            Demo MP4 níže je poslední lokální smoke render z workeru. Produkční export
-            bude po napojení vznikat přes Storage a schválený deck.
-          </p>
-          <div className="actions" style={{ marginTop: 18 }}>
-            <a className="button" href="/tv/screen-demo" rel="noreferrer" target="_blank">
-              <MonitorPlay size={18} aria-hidden="true" />
-              Otevřít demo přehrávač
-            </a>
-            <a className="button" href="/api/exports/export-demo/download">
-              <Download size={18} aria-hidden="true" />
-              Stáhnout demo MP4
-            </a>
-            <button className="button" disabled type="button">
-              <RotateCcw size={18} aria-hidden="true" />
-              Vrátit verzi - není archiv
-            </button>
-          </div>
-          <p className="muted">Nepárováno s žádnou provozní obrazovkou.</p>
-        </article>
-      </section>
-
-      <div id="kontrola-menu" style={{ marginTop: 24 }}>
+      <div id="kontrola-menu" style={{ marginTop: 18 }}>
         <MenuReview />
       </div>
 
-      <section style={{ marginTop: 24 }}>
-        <div className="topbar">
-          <div>
-            <p className="eyebrow">TV náhled</p>
-            <h2 className="page-title" style={{ fontSize: 32 }}>
-              Obrazovky, bezpečný okraj a návrhy asistenta
-            </h2>
-          </div>
-          <button className="button" disabled type="button">
-            <CalendarPlus size={18} aria-hidden="true" />
-            Naplánovat týden - plánováno
-          </button>
+      <details className="settings-details demo-details">
+        <summary>
+          <span>Ukázkový stav a náhledy</span>
+          <small>Provozovny, postup, demo přehrávač</small>
+        </summary>
+
+        <div className="demo-details-body">
+          <section className="grid cols-3" aria-label="Stav provozoven">
+            {locations.map((location) => (
+              <article className="card pad" key={location.name}>
+                <div className="topbar" style={{ marginBottom: 12 }}>
+                  <h2 className="card-title">{location.name}</h2>
+                  <StatusBadge tone={location.tone}>{location.status}</StatusBadge>
+                </div>
+                <p className="muted">TV: {location.tv}</p>
+                <p className="muted">Poslední publikace: {location.published}</p>
+                <div className="actions" style={{ marginTop: 18 }}>
+                  {location.actionHref ? (
+                    <a className="button primary" href={location.actionHref}>
+                      <CheckSquare size={17} aria-hidden="true" />
+                      {location.action}
+                    </a>
+                  ) : (
+                    <button className="button primary" disabled={location.actionDisabled} type="button">
+                      <CheckSquare size={17} aria-hidden="true" />
+                      {location.action}
+                    </button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </section>
+
+          <section className="grid cols-dashboard">
+            <article className="card pad">
+              <p className="eyebrow">Postup</p>
+              <h2 className="card-title">Co musí být hotové před odesláním na TV</h2>
+              <div className="grid" style={{ marginTop: 18 }}>
+                {[
+                  ["1", "Vložit text menu", "Text ze stolu nebo PDF přepsaný do pole níže."],
+                  ["2", "Zkontrolovat ceny", "Systém připraví položky, člověk potvrdí fakta."],
+                  ["3", "Zkontrolovat TV náhled", "Systém hlídá bezpečný okraj a čitelnost."],
+                  ["4", "Odeslání v ukázce vypnuto", "V ostrém režimu se po potvrzení menu odešle na TV."]
+                ].map(([step, title, copy]) => (
+                  <div
+                    key={step}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "44px 1fr",
+                      gap: 12,
+                      alignItems: "center"
+                    }}
+                  >
+                    <span className="brand-mark" style={{ width: 40, height: 40 }}>
+                      {step}
+                    </span>
+                    <div>
+                      <strong>{title}</strong>
+                      <div className="muted">{copy}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <article className="card pad">
+              <p className="eyebrow">TV smyčka</p>
+              <h2 className="card-title">Demo smyčka</h2>
+              <p className="muted">
+                Ukázková smyčka má {demoDeck.slides.length} obrazovky a délku přibližně{" "}
+                {Math.round(
+                  demoDeck.slides.reduce((total, slide) => total + slide.durationFrames, 0) /
+                    demoDeck.fps
+                )}{" "}
+                sekund.
+              </p>
+              <p className="muted">
+                Ukázkový soubor slouží jen pro kontrolu přehrávání. Ostré TV běží z potvrzeného menu.
+              </p>
+              <div className="actions" style={{ marginTop: 18 }}>
+                <a className="button" href="/tv/screen-demo" rel="noreferrer" target="_blank">
+                  <MonitorPlay size={18} aria-hidden="true" />
+                  Otevřít demo přehrávač
+                </a>
+                <a className="button" href="/api/exports/export-demo/download">
+                  <Download size={18} aria-hidden="true" />
+                  Stáhnout demo MP4
+                </a>
+                <button className="button" disabled type="button">
+                  <RotateCcw size={18} aria-hidden="true" />
+                  Vrátit verzi - v ukázce vypnuto
+                </button>
+              </div>
+              <p className="muted">Nepárováno s žádnou provozní obrazovkou.</p>
+            </article>
+          </section>
+
+          <section>
+            <div className="topbar">
+              <div>
+                <p className="eyebrow">TV náhled</p>
+                <h2 className="page-title" style={{ fontSize: 32 }}>
+                  Obrazovky, bezpečný okraj a návrhy asistenta
+                </h2>
+              </div>
+              <button className="button" disabled type="button">
+                <CalendarPlus size={18} aria-hidden="true" />
+                Týdenní plán - v ukázce vypnuto
+              </button>
+            </div>
+            <TvStudioClient />
+          </section>
         </div>
-        <TvStudioClient />
-      </section>
+      </details>
     </>
   );
 }
@@ -241,145 +233,104 @@ function ProductionHome({
     <>
       <div className="topbar">
         <div>
-          <p className="eyebrow">Produkční režim · {formatCzechDate(snapshot.todayIso)}</p>
-          <h1 className="page-title">Dnešní provoz TV Studia</h1>
+          <p className="eyebrow">Dnes · {formatCzechDate(snapshot.todayIso)}</p>
+          <h1 className="page-title">Pustit dnešní menu na TV</h1>
           <p className="page-copy">
             {snapshot.dataError
-              ? "Přihlášení funguje, ale datová vrstva není ověřená. Tato stránka proto nezobrazuje souhrn ani nuly jako zdravý stav."
-              : `Přihlášeno do organizace ${snapshot.orgName}. Tato obrazovka používá pouze data dostupná přes Supabase session a RLS; lokální demo smyčka se v produkci nezobrazuje.`}
+              ? "Přihlášení funguje, ale data se nepodařilo načíst. Dokud se to neopraví, stránka schová denní spuštění."
+              : `Přihlášeno: ${getRoleLabel(access.role)} · ${snapshot.orgName}`}
           </p>
         </div>
-        <div className="actions">
-          <a className="button primary" href="#dnes-spustit-tv">
-            <FileUp size={18} aria-hidden="true" />
-            Dnes spustit TV
-          </a>
-          <a className="button" href="#dnes-spustit-tv">
-            <MonitorPlay size={18} aria-hidden="true" />
-            TV web player
-          </a>
-        </div>
       </div>
-
-      <section className="production-banner" aria-label="Produkční datový režim">
-        <ShieldCheck size={19} aria-hidden="true" />
-        <strong>Bez demo fallbacku</strong>
-        <span>
-          Role {getRoleLabel(access.role)} vidí jen data organizace {access.orgId}. Pokud
-          nejsou tabulky nebo RLS připravené, stránka ukáže chybu místo ukázkového menu.
-        </span>
-      </section>
 
       {snapshot.dataError ? (
         <ProductionDataError error={snapshot.dataError} />
       ) : (
         <>
-          <ProductionModules />
-          <ProductionQuickLaunch snapshot={snapshot} />
+          <ProductionQuickLaunch
+            canLaunch={canLaunchToday(access.role)}
+            roleLabel={getRoleLabel(access.role)}
+            snapshot={snapshot}
+          />
 
-          <section className="grid cols-3" aria-label="Produkční stav">
-            <ProductionMetric label="Provozovny" value={snapshot.counts.locations} tone="info" />
-            <ProductionMetric
-              label="TV online"
-              value={`${snapshot.counts.onlineScreens}/${snapshot.counts.screens}`}
-              tone={
-                snapshot.counts.screens > 0 &&
-                snapshot.counts.onlineScreens === snapshot.counts.screens
-                  ? "good"
-                  : "warn"
-              }
-            />
-            <ProductionMetric
-              label="Dnešní menu"
-              value={snapshot.counts.menusToday}
-              tone={snapshot.counts.menusToday > 0 ? "good" : "warn"}
-            />
-            <ProductionMetric
-              label="MP4 exporty"
-              value={snapshot.counts.exports}
-              tone={snapshot.counts.exports > 0 ? "good" : "warn"}
-            />
-            <ProductionMetric
-              label="Render joby"
-              value={snapshot.counts.renderJobsRunning}
-              tone={snapshot.counts.renderJobsRunning > 0 ? "warn" : "info"}
-            />
-          </section>
-
-          <section style={{ marginTop: 22 }}>
-            <div className="topbar">
-              <div>
-                <p className="eyebrow">Provozovny</p>
-                <h2 className="page-title" style={{ fontSize: 32 }}>
-                  Skutečný stav bez ukázkových dat
-                </h2>
-              </div>
-            </div>
-
-            {snapshot.locations.length === 0 ? (
-              <article className="empty-state">
-                <Database size={28} aria-hidden="true" />
-                <h3>Žádná provozovna zatím není dostupná</h3>
-                <p>
-                  Přihlášení funguje, ale pro tuto organizaci nejsou přes RLS viditelné žádné
-                  provozovny. V produkci je potřeba založit organizaci, provozovny, jídelny a TV
-                  obrazovky.
-                </p>
-              </article>
-            ) : (
-              <div className="grid cols-3">
-                {snapshot.locations.map((location) => (
-                  <ProductionLocationCard location={location} key={location.id} />
-                ))}
-              </div>
-            )}
-          </section>
+          <ProductionTodaySummary snapshot={snapshot} />
+          <ProductionSettings access={access} snapshot={snapshot} />
         </>
       )}
-
-      <section className="grid cols-dashboard" style={{ marginTop: 22 }}>
-        <article className="card pad">
-          <p className="eyebrow">Produkční workflow</p>
-          <h2 className="card-title">Co se provede při dnešním spuštění</h2>
-          <div className="production-check-list">
-            {[
-              ["1", "Import menu", "Text jídelníčku se uloží jako zdroj, menu verze a položky."],
-              ["2", "Schválení", "Menu i TV deck projdou schvalovacími RPC kroky a audit logem."],
-              ["3", "Image 2 šablona", "Pozadí se uloží do Storage, texty se renderují deterministicky přes něj."],
-              ["4", "Publish", "Screen pointer se přepne na publikovanou live TV smyčku s párovacím tokenem."]
-            ].map(([step, title, copy]) => (
-              <div className="production-check" key={step}>
-                <span className="brand-mark">{step}</span>
-                <div>
-                  <strong>{title}</strong>
-                  <p>{copy}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="card pad">
-          <p className="eyebrow">Bezpečnost</p>
-          <h2 className="card-title">Co tato stránka už hlídá</h2>
-          <ul className="production-bullet-list">
-            <li>Neukazuje demo jídelnu v produkčním authenticated režimu.</li>
-            <li>Nezobrazuje odkaz na lokální `export-demo` MP4.</li>
-            <li>Čte přes Supabase session a RLS, ne přes browser service role.</li>
-            <li>Role a orgId jsou převzaté ze serverového auth guardu.</li>
-          </ul>
-        </article>
-      </section>
     </>
   );
 }
 
-function ProductionModules() {
+function ProductionTodaySummary({ snapshot }: { snapshot: ProductionDashboardSnapshot }) {
+  return (
+    <section className="today-summary" id="dnesni-stav" aria-label="Dnešní stav">
+      <div className="today-summary-header">
+        <div>
+          <p className="eyebrow">Stav</p>
+          <h2>Co je dnes vidět na TV</h2>
+        </div>
+        <StatusBadge
+          tone={
+            snapshot.counts.screens > 0 && snapshot.counts.onlineScreens === snapshot.counts.screens
+              ? "good"
+              : "warn"
+          }
+        >
+          TV {snapshot.counts.onlineScreens}/{snapshot.counts.screens}
+        </StatusBadge>
+      </div>
+
+      <div className="today-summary-grid">
+        <ProductionMetric
+          label="Dnešní menu"
+          value={snapshot.counts.menusToday > 0 ? "Hotovo" : "Chybí"}
+          tone={snapshot.counts.menusToday > 0 ? "good" : "warn"}
+        />
+        <ProductionMetric
+          label="TV obrazovky"
+          value={`${snapshot.counts.onlineScreens}/${snapshot.counts.screens}`}
+          tone={
+            snapshot.counts.screens > 0 && snapshot.counts.onlineScreens === snapshot.counts.screens
+              ? "good"
+              : "warn"
+          }
+        />
+        <ProductionMetric
+          label="MP4 záloha"
+          value={snapshot.counts.exports > 0 ? "Ano" : "Není"}
+          tone={snapshot.counts.exports > 0 ? "good" : "info"}
+        />
+      </div>
+
+      {snapshot.locations.length === 0 ? (
+        <article className="empty-state">
+          <Database size={28} aria-hidden="true" />
+          <h3>Není založená žádná provozovna</h3>
+          <p>Provozovna, jídelna a TV se nastavují jednorázově v Nastavení.</p>
+        </article>
+      ) : (
+        <div className="location-list">
+          {snapshot.locations.map((location) => (
+            <ProductionLocationCard location={location} key={location.id} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ProductionSettings({
+  access,
+  snapshot
+}: {
+  access: Extract<StudioAccessState, { mode: "authenticated" }>;
+  snapshot: ProductionDashboardSnapshot;
+}) {
   const modules = [
     {
       id: "menu",
       title: "Menu",
-      copy: "Import textu denního jídelníčku, strukturované položky, ceny, alergeny a uložená menu verze.",
+      copy: "Vložení denního jídelníčku, ceny a alergeny.",
       icon: Utensils,
       tone: "good" as const,
       status: "Aktivní"
@@ -387,7 +338,7 @@ function ProductionModules() {
     {
       id: "tv-studio",
       title: "TV Studio",
-      copy: "Image 2 background, 16:9 live deck, deterministic text overlay a TV web player.",
+      copy: "Náhled obrazovky, šablony a čitelné texty.",
       icon: Clapperboard,
       tone: "good" as const,
       status: "Aktivní"
@@ -395,7 +346,7 @@ function ProductionModules() {
     {
       id: "schvaleni",
       title: "Schválení",
-      copy: "Menu i deck se schvalují přes Supabase RPC a změny se zapisují do audit logu.",
+      copy: "Potvrzení obsahu a vzhledu před odesláním.",
       icon: CheckSquare,
       tone: "good" as const,
       status: "Napojeno"
@@ -403,7 +354,7 @@ function ProductionModules() {
     {
       id: "media",
       title: "Média",
-      copy: "Vygenerované Image 2 assety se ukládají do Storage bucketu generated-assets.",
+      copy: "Pozadí, obrázky a ukázkové vizuály.",
       icon: ImageIcon,
       tone: "good" as const,
       status: "Napojeno"
@@ -411,15 +362,15 @@ function ProductionModules() {
     {
       id: "exporty",
       title: "Exporty",
-      copy: "Live player je primární cesta pro dnešek; MP4 export zůstává připravený jako fallback workflow.",
+      copy: "TV přehrávač a MP4 záloha pro flashku.",
       icon: Download,
       tone: "info" as const,
-      status: "Live + MP4 fallback"
+      status: "TV + MP4"
     },
     {
       id: "archiv",
       title: "Archiv",
-      copy: "Menu verze, deck verze, publish eventy a AI generace zůstávají uložené v Supabase.",
+      copy: "Historie menu, vzhledů a odeslání na TV.",
       icon: Archive,
       tone: "good" as const,
       status: "Auditováno"
@@ -427,7 +378,7 @@ function ProductionModules() {
     {
       id: "nastaveni",
       title: "Nastavení",
-      copy: "Role, organizace, provozovna, jídelna, TV screen tokeny a produkční env jsou nastavené.",
+      copy: "Role, provozovny, jídelny a TV obrazovky.",
       icon: Settings,
       tone: "good" as const,
       status: "Nastaveno"
@@ -435,35 +386,80 @@ function ProductionModules() {
   ];
 
   return (
-    <section className="module-section" aria-label="Aktivní moduly">
-      <div className="topbar compact">
-        <div>
-          <p className="eyebrow">Moduly</p>
-          <h2 className="page-title" style={{ fontSize: 30 }}>
-            Pro dnešní provoz nejsou jen plánované
-          </h2>
-        </div>
-        <a className="button primary" href="#dnes-spustit-tv">
-          <Sparkles size={18} aria-hidden="true" />
-          Spustit dnešní TV
-        </a>
-      </div>
-      <div className="module-grid">
-        {modules.map((module) => {
-          const Icon = module.icon;
+    <section className="settings-section" id="nastaveni" aria-label="Nastavení">
+      <details className="settings-details">
+        <summary>
+          <span>
+            <Settings size={20} aria-hidden="true" />
+            Správa a nastavení
+          </span>
+          <small>Provozovna, šablony, role, exporty, archiv</small>
+        </summary>
 
-          return (
-            <article className="card pad module-card" id={module.id} key={module.id}>
-              <div className="module-card-head">
-                <Icon size={20} aria-hidden="true" />
-                <StatusBadge tone={module.tone}>{module.status}</StatusBadge>
+        <div className="settings-grid">
+          <div className="settings-panel">
+            <p className="eyebrow">Provoz</p>
+            <h3>Základní údaje</h3>
+            <dl className="settings-facts">
+              <div>
+                <dt>Organizace</dt>
+                <dd>{snapshot.orgName}</dd>
               </div>
-              <h3>{module.title}</h3>
-              <p>{module.copy}</p>
-            </article>
-          );
-        })}
-      </div>
+              <div>
+                <dt>Role</dt>
+                <dd>{getRoleLabel(access.role)}</dd>
+              </div>
+              <div>
+                <dt>Provozovny</dt>
+                <dd>{snapshot.counts.locations}</dd>
+              </div>
+              <div>
+                <dt>Interní ID</dt>
+                <dd>{access.orgId}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="settings-panel">
+            <p className="eyebrow">Moduly</p>
+            <h3>Co je zapojené</h3>
+            <div className="settings-module-list">
+              {modules.map((module) => {
+                const Icon = module.icon;
+
+                return (
+                  <div className="settings-row" id={module.id} key={module.id}>
+                    <Icon size={18} aria-hidden="true" />
+                    <strong>{module.title}</strong>
+                    <StatusBadge tone={module.tone}>{module.status}</StatusBadge>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="settings-panel settings-panel-wide">
+            <p className="eyebrow">Workflow</p>
+            <h3>Co se provede při spuštění</h3>
+            <div className="production-check-list compact">
+              {[
+                ["1", "Import menu", "Text se uloží jako dnešní menu."],
+                ["2", "Schválení", "Systém uloží potvrzenou verzi."],
+                ["3", "Pozadí", "Pozadí zůstane bez textu, menu se vykreslí zvlášť."],
+                ["4", "Odeslání", "TV dostane novou smyčku a odkaz pro přehrávač."]
+              ].map(([step, title, copy]) => (
+                <div className="production-check" key={step}>
+                  <span className="brand-mark">{step}</span>
+                  <div>
+                    <strong>{title}</strong>
+                    <p>{copy}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </details>
     </section>
   );
 }
@@ -473,13 +469,15 @@ function ProductionDataError({ error }: { error: string }) {
     <section className="card pad production-alert" aria-label="Datová chyba">
       <Database size={22} aria-hidden="true" />
       <div>
-        <p className="eyebrow">Supabase kontrola</p>
-        <h2 className="card-title">Produkční data se nepodařilo ověřit</h2>
+        <p className="eyebrow">Kontrola dat</p>
+        <h2 className="card-title">Data se nepodařilo načíst</h2>
         <p className="muted">
-          Souhrn provozoven, TV a exportů je skrytý, protože by nuly mohly vypadat jako
-          zdravý prázdný stav.
+          Denní spuštění je schované, aby nevznikl omyl. Požádejte správce o kontrolu napojení.
         </p>
-        <p className="diagnostic-text">{error}</p>
+        <details className="diagnostic-details">
+          <summary>Podrobnosti pro správce</summary>
+          <p className="diagnostic-text">{error}</p>
+        </details>
       </div>
     </section>
   );
@@ -516,6 +514,9 @@ function ProductionLocationCard({ location }: { location: ProductionLocationStat
         TV online: {location.onlineScreenCount}/{location.screenCount}
       </p>
       <p className="muted">
+        TV potvrzeno: {location.confirmedScreenCount}/{location.screenCount}
+      </p>
+      <p className="muted">
         Poslední menu:{" "}
         {location.latestMenuDate ? formatCzechDate(location.latestMenuDate) : "žádné menu"}
       </p>
@@ -523,7 +524,7 @@ function ProductionLocationCard({ location }: { location: ProductionLocationStat
       <div className="actions" style={{ marginTop: 18 }}>
         <a className="button" href="#dnes-spustit-tv">
           <CheckSquare size={17} aria-hidden="true" />
-          Otevřít dnešní workflow
+          Přejít ke spuštění
         </a>
       </div>
     </article>
@@ -550,9 +551,10 @@ function getLocationLabel(status: ProductionLocationStatus["blockingStatus"]) {
   const labels: Record<ProductionLocationStatus["blockingStatus"], string> = {
     empty: "Bez TV",
     needs_menu: "Chybí dnešní menu",
-    needs_publish: "Chybí publish",
+    needs_publish: "Čeká na odeslání",
     needs_tv_online: "TV offline",
-    needs_export: "Live publikováno",
+    awaiting_tv_confirmation: "Čeká na TV",
+    needs_export: "TV běží",
     verify_tv: "Ověřit na TV"
   };
 
@@ -561,14 +563,18 @@ function getLocationLabel(status: ProductionLocationStatus["blockingStatus"]) {
 
 function getRoleLabel(role: StudioAccessRole) {
   const labels: Record<StudioAccessRole, string> = {
-    owner: "owner",
+    owner: "vlastník",
     admin: "admin",
     editor: "editor",
-    designer: "designer",
-    approver: "approver",
-    publisher: "publisher",
-    viewer: "viewer"
+    designer: "designér",
+    approver: "schvalovatel",
+    publisher: "publikující",
+    viewer: "náhled"
   };
 
   return labels[role];
+}
+
+function canLaunchToday(role: StudioAccessRole) {
+  return role === "owner" || role === "admin";
 }

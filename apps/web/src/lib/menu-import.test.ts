@@ -37,4 +37,22 @@ describe("text menu import payload", () => {
       })
     ).toThrow();
   });
+
+  it("surfaces blocking issues for missing prices and allergens", () => {
+    const input = textMenuImportRequestSchema.parse({
+      locationId: "00000000-0000-4000-8000-000000000002",
+      canteenId: "00000000-0000-4000-8000-000000000003",
+      menuDate: "2026-07-06",
+      sourceText: "Kuřecí steak s rýží\nSmažený řízek 159 Kč"
+    });
+
+    const payload = buildTextMenuImportPayload(input);
+    const errorCodes = payload.issues
+      .filter((issue) => issue.severity === "error")
+      .map((issue) => issue.code);
+
+    expect(payload.itemCount).toBe(2);
+    expect(errorCodes).toContain("missing_price");
+    expect(errorCodes).toContain("missing_allergens");
+  });
 });

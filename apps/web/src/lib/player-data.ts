@@ -234,6 +234,7 @@ async function getAssetSignedUrls(orgId: string, assetIds: string[]) {
 
 export async function recordPlayerHeartbeat(input: {
   screenId: string;
+  versionId?: string | null;
   error?: string | null;
 }) {
   const supabase = getSupabaseAdmin();
@@ -241,17 +242,48 @@ export async function recordPlayerHeartbeat(input: {
     return false;
   }
 
+  const heartbeatPatch: Record<string, string | null> = {
+    last_heartbeat_at: new Date().toISOString(),
+    last_error: input.error ?? null
+  };
+
+  if (input.versionId) {
+    heartbeatPatch.last_seen_deck_version_id = input.versionId;
+    heartbeatPatch.last_seen_at = heartbeatPatch.last_heartbeat_at;
+  }
+
   const { error } = await supabase
     .from("screens")
-    .update({
-      last_heartbeat_at: new Date().toISOString(),
-      last_error: input.error ?? null
-    })
+    .update(heartbeatPatch)
     .eq("id", input.screenId);
 
   if (error) {
+    if (input.versionId && isMissingLastSeenColumnError(error)) {
+      const { error: fallbackError } = await supabase
+        .from("screens")
+        .update({
+          last_heartbeat_at: heartbeatPatch.last_heartbeat_at,
+          last_error: heartbeatPatch.last_error
+        })
+        .eq("id", input.screenId);
+
+      if (!fallbackError) {
+        return true;
+      }
+    }
+
     throw new Error(`Heartbeat update failed: ${error.message}`);
   }
 
   return true;
+}
+
+function isMissingLastSeenColumnError(error: { code?: string; message?: string }) {
+  const message = error.message ?? "";
+
+  return (
+    error.code === "42703" ||
+    message.includes("last_seen_deck_version_id") ||
+    message.includes("last_seen_at")
+  );
 }

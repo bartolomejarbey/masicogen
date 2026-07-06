@@ -5,6 +5,7 @@ export type ProductionLocationStatus = {
   name: string;
   screenCount: number;
   onlineScreenCount: number;
+  confirmedScreenCount: number;
   latestMenuDate: string | null;
   latestMenuStatus: string | null;
   blockingStatus:
@@ -12,6 +13,7 @@ export type ProductionLocationStatus = {
     | "needs_menu"
     | "needs_publish"
     | "needs_tv_online"
+    | "awaiting_tv_confirmation"
     | "needs_export"
     | "verify_tv";
 };
@@ -22,6 +24,7 @@ export type ProductionDashboardSnapshot = {
   todayIso: string;
   locations: ProductionLocationStatus[];
   canteens: ProductionCanteen[];
+  screens: ProductionScreen[];
   counts: {
     locations: number;
     screens: number;
@@ -39,6 +42,15 @@ export type ProductionCanteen = {
   name: string;
 };
 
+export type ProductionScreen = {
+  id: string;
+  locationId: string;
+  canteenId: string;
+  name: string;
+  status: string;
+  currentDeckVersionId: string | null;
+};
+
 type OrganizationRow = {
   name: string;
 };
@@ -51,9 +63,13 @@ export type LocationRow = {
 export type ScreenRow = {
   id: string;
   location_id: string;
+  canteen_id: string;
+  name: string;
   status: string;
   current_deck_version_id: string | null;
   last_heartbeat_at: string | null;
+  last_seen_deck_version_id: string | null;
+  last_seen_at: string | null;
 };
 
 export type MenuRow = {
@@ -78,6 +94,8 @@ type RenderJobRow = {
   id: string;
   status: string;
 };
+
+type StudioSupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>;
 
 export async function getProductionDashboardSnapshot(
   orgId: string
@@ -112,11 +130,7 @@ export async function getProductionDashboardSnapshot(
         .eq("org_id", orgId)
         .order("created_at", { ascending: true })
         .returns<CanteenRow[]>(),
-      supabase
-        .from("screens")
-        .select("id, location_id, status, current_deck_version_id, last_heartbeat_at")
-        .eq("org_id", orgId)
-        .returns<ScreenRow[]>(),
+      getDashboardScreens(supabase, orgId),
       supabase
         .from("menus")
         .select("id, location_id, menu_date, status, current_version_id")
@@ -182,6 +196,7 @@ export function summarizeProductionDashboard(input: {
     const latestMenu = menus[0] ?? null;
     const onlineScreenCount = screens.filter((screen) => isScreenOnline(screen)).length;
     const publishedScreenCount = screens.filter((screen) => screen.current_deck_version_id).length;
+    const confirmedScreenCount = screens.filter((screen) => hasSeenCurrentDeck(screen)).length;
     const hasTodayMenu = menus.some((menu) => menu.menu_date === input.todayIso);
 
     return {
@@ -189,12 +204,14 @@ export function summarizeProductionDashboard(input: {
       name: location.name,
       screenCount: screens.length,
       onlineScreenCount,
+      confirmedScreenCount,
       latestMenuDate: latestMenu?.menu_date ?? null,
       latestMenuStatus: latestMenu?.status ?? null,
       blockingStatus: getLocationBlockingStatus({
         screenCount: screens.length,
         onlineScreenCount,
         publishedScreenCount,
+        confirmedScreenCount,
         hasTodayMenu,
         exportCount: input.exportCount
       })
@@ -210,6 +227,14 @@ export function summarizeProductionDashboard(input: {
       id: canteen.id,
       locationId: canteen.location_id,
       name: canteen.name
+    })),
+    screens: input.screens.map((screen) => ({
+      id: screen.id,
+      locationId: screen.location_id,
+      canteenId: screen.canteen_id,
+      name: screen.name,
+      status: screen.status,
+      currentDeckVersionId: screen.current_deck_version_id
     })),
     counts: {
       locations: input.locations.length,
@@ -227,6 +252,7 @@ function getLocationBlockingStatus(input: {
   screenCount: number;
   onlineScreenCount: number;
   publishedScreenCount: number;
+  confirmedScreenCount: number;
   hasTodayMenu: boolean;
   exportCount: number;
 }): ProductionLocationStatus["blockingStatus"] {
@@ -246,11 +272,45 @@ function getLocationBlockingStatus(input: {
     return "needs_tv_online";
   }
 
+  if (input.confirmedScreenCount < input.publishedScreenCount) {
+    return "awaiting_tv_confirmation";
+  }
+
   if (input.exportCount === 0) {
     return "needs_export";
   }
 
   return "verify_tv";
+}
+
+async function getDashboardScreens(supabase: StudioSupabaseClient, orgId: string) {
+  const extendedResult = await supabase
+    .from("screens")
+    .select(
+      "id, location_id, canteen_id, name, status, current_deck_version_id, last_heartbeat_at, last_seen_deck_version_id, last_seen_at"
+    )
+    .eq("org_id", orgId)
+    .returns<ScreenRow[]>();
+
+  if (!isMissingColumnError(extendedResult.error)) {
+    return extendedResult;
+  }
+
+  const fallbackResult = await supabase
+    .from("screens")
+    .select("id, location_id, canteen_id, name, status, current_deck_version_id, last_heartbeat_at")
+    .eq("org_id", orgId)
+    .returns<Array<Omit<ScreenRow, "last_seen_deck_version_id" | "last_seen_at">>>();
+
+  return {
+    ...fallbackResult,
+    data:
+      fallbackResult.data?.map((screen) => ({
+        ...screen,
+        last_seen_deck_version_id: null,
+        last_seen_at: null
+      })) ?? null
+  };
 }
 
 function isScreenOnline(screen: ScreenRow) {
@@ -262,6 +322,14 @@ function isScreenOnline(screen: ScreenRow) {
   return Number.isFinite(heartbeatAgeMs) && heartbeatAgeMs <= 90_000;
 }
 
+function hasSeenCurrentDeck(screen: ScreenRow) {
+  return Boolean(
+    screen.current_deck_version_id &&
+      screen.last_seen_deck_version_id === screen.current_deck_version_id &&
+      screen.last_seen_at
+  );
+}
+
 function getPragueTodayIso() {
   return new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Europe/Prague",
@@ -269,4 +337,13 @@ function getPragueTodayIso() {
     month: "2-digit",
     day: "2-digit"
   }).format(new Date());
+}
+
+function isMissingColumnError(error: { code?: string; message?: string } | null) {
+  return Boolean(
+    error &&
+      (error.code === "42703" ||
+        error.message?.includes("last_seen_deck_version_id") ||
+        error.message?.includes("last_seen_at"))
+  );
 }

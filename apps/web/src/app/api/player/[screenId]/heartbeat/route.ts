@@ -20,6 +20,7 @@ export async function POST(
   if (playerDataConfigured()) {
     await recordPlayerHeartbeat({
       screenId,
+      versionId: body.versionId ?? null,
       error: body.error ?? null
     });
 
