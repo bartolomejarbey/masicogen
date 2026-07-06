@@ -18,13 +18,13 @@ const navItems = [
   { label: "Dnes", icon: Home, section: "today", href: "/" },
   { label: "Vizuální audit", icon: CheckSquare, section: "audit", href: "/audit" },
   { label: "Readiness", icon: ShieldAlert, section: "readiness", href: "/readiness" },
-  { label: "Menu - plánováno", icon: Utensils },
-  { label: "TV Studio - plánováno", icon: Clapperboard },
-  { label: "Schválení - plánováno", icon: CheckSquare },
-  { label: "Média - plánováno", icon: Image },
-  { label: "Exporty - plánováno", icon: Download },
-  { label: "Archiv - plánováno", icon: Archive },
-  { label: "Nastavení - plánováno", icon: Settings }
+  { label: "Menu", icon: Utensils, href: "/#menu" },
+  { label: "TV Studio", icon: Clapperboard, href: "/#tv-studio" },
+  { label: "Schválení", icon: CheckSquare, href: "/#schvaleni" },
+  { label: "Média", icon: Image, href: "/#media" },
+  { label: "Exporty", icon: Download, href: "/#exporty" },
+  { label: "Archiv", icon: Archive, href: "/#archiv" },
+  { label: "Nastavení", icon: Settings, href: "/#nastaveni" }
 ];
 
 export async function StudioShell({
@@ -84,24 +84,11 @@ export async function StudioShell({
             const Icon = item.icon;
             const isActive = item.section === activeSection;
 
-            if (item.href) {
-              return (
-                <Link className={`nav-item ${isActive ? "active" : ""}`} href={item.href} key={item.label}>
-                  <Icon size={18} aria-hidden="true" />
-                  {item.label}
-                </Link>
-              );
-            }
-
             return (
-              <span
-                className="nav-item future"
-                key={item.label}
-                title="Sekce připravená pro další milník"
-              >
+              <Link className={`nav-item ${isActive ? "active" : ""}`} href={item.href} key={item.label}>
                 <Icon size={18} aria-hidden="true" />
                 {item.label}
-              </span>
+              </Link>
             );
           })}
         </nav>

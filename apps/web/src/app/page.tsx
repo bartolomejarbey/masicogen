@@ -1,13 +1,19 @@
 import {
+  Archive,
   CalendarPlus,
   CheckSquare,
+  Clapperboard,
   Copy,
   Database,
   Download,
   FileUp,
+  Image as ImageIcon,
   MonitorPlay,
   RotateCcw,
-  ShieldCheck
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Utensils
 } from "lucide-react";
 import { demoDeck, demoMenu, formatCzechDate } from "@masico/shared";
 import { MenuReview } from "@/components/MenuReview";
@@ -268,6 +274,7 @@ function ProductionHome({
         <ProductionDataError error={snapshot.dataError} />
       ) : (
         <>
+          <ProductionModules />
           <ProductionQuickLaunch snapshot={snapshot} />
 
           <section className="grid cols-3" aria-label="Produkční stav">
@@ -332,14 +339,14 @@ function ProductionHome({
 
       <section className="grid cols-dashboard" style={{ marginTop: 22 }}>
         <article className="card pad">
-          <p className="eyebrow">Další produkční krok</p>
-          <h2 className="card-title">Co musí být napojené, než půjde obsluha do provozu</h2>
+          <p className="eyebrow">Produkční workflow</p>
+          <h2 className="card-title">Co se provede při dnešním spuštění</h2>
           <div className="production-check-list">
             {[
-              ["1", "Import menu", "Nahrát PDF/fotku a založit zdroj i verzi menu přes přihlášený účet."],
-              ["2", "Schválení", "Spustit schvalovací krok ze serveru a zapsat audit log."],
-              ["3", "Export", "Po renderu vytvořit export a bezpečný odkaz ke stažení v rámci organizace."],
-              ["4", "Publish", "Přepnout screen pointer jen na schválený deck a ověřený MP4."]
+              ["1", "Import menu", "Text jídelníčku se uloží jako zdroj, menu verze a položky."],
+              ["2", "Schválení", "Menu i TV deck projdou schvalovacími RPC kroky a audit logem."],
+              ["3", "Image 2 šablona", "Pozadí se uloží do Storage, texty se renderují deterministicky přes něj."],
+              ["4", "Publish", "Screen pointer se přepne na publikovanou live TV smyčku s párovacím tokenem."]
             ].map(([step, title, copy]) => (
               <div className="production-check" key={step}>
                 <span className="brand-mark">{step}</span>
@@ -364,6 +371,100 @@ function ProductionHome({
         </article>
       </section>
     </>
+  );
+}
+
+function ProductionModules() {
+  const modules = [
+    {
+      id: "menu",
+      title: "Menu",
+      copy: "Import textu denního jídelníčku, strukturované položky, ceny, alergeny a uložená menu verze.",
+      icon: Utensils,
+      tone: "good" as const,
+      status: "Aktivní"
+    },
+    {
+      id: "tv-studio",
+      title: "TV Studio",
+      copy: "Image 2 background, 16:9 live deck, deterministic text overlay a TV web player.",
+      icon: Clapperboard,
+      tone: "good" as const,
+      status: "Aktivní"
+    },
+    {
+      id: "schvaleni",
+      title: "Schválení",
+      copy: "Menu i deck se schvalují přes Supabase RPC a změny se zapisují do audit logu.",
+      icon: CheckSquare,
+      tone: "good" as const,
+      status: "Napojeno"
+    },
+    {
+      id: "media",
+      title: "Média",
+      copy: "Vygenerované Image 2 assety se ukládají do Storage bucketu generated-assets.",
+      icon: ImageIcon,
+      tone: "good" as const,
+      status: "Napojeno"
+    },
+    {
+      id: "exporty",
+      title: "Exporty",
+      copy: "Live player je primární cesta pro dnešek; MP4 export zůstává připravený jako fallback workflow.",
+      icon: Download,
+      tone: "info" as const,
+      status: "Live + MP4 fallback"
+    },
+    {
+      id: "archiv",
+      title: "Archiv",
+      copy: "Menu verze, deck verze, publish eventy a AI generace zůstávají uložené v Supabase.",
+      icon: Archive,
+      tone: "good" as const,
+      status: "Auditováno"
+    },
+    {
+      id: "nastaveni",
+      title: "Nastavení",
+      copy: "Role, organizace, provozovna, jídelna, TV screen tokeny a produkční env jsou nastavené.",
+      icon: Settings,
+      tone: "good" as const,
+      status: "Nastaveno"
+    }
+  ];
+
+  return (
+    <section className="module-section" aria-label="Aktivní moduly">
+      <div className="topbar compact">
+        <div>
+          <p className="eyebrow">Moduly</p>
+          <h2 className="page-title" style={{ fontSize: 30 }}>
+            Pro dnešní provoz nejsou jen plánované
+          </h2>
+        </div>
+        <a className="button primary" href="#dnes-spustit-tv">
+          <Sparkles size={18} aria-hidden="true" />
+          Spustit dnešní TV
+        </a>
+      </div>
+      <div className="module-grid">
+        {modules.map((module) => {
+          const Icon = module.icon;
+
+          return (
+            <article className="card pad module-card" id={module.id} key={module.id}>
+              <div className="module-card-head">
+                <Icon size={20} aria-hidden="true" />
+                <StatusBadge tone={module.tone}>{module.status}</StatusBadge>
+              </div>
+              <h3>{module.title}</h3>
+              <p>{module.copy}</p>
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -420,10 +521,10 @@ function ProductionLocationCard({ location }: { location: ProductionLocationStat
       </p>
       <p className="muted">Stav menu: {location.latestMenuStatus ?? "nenalezeno"}</p>
       <div className="actions" style={{ marginTop: 18 }}>
-        <button className="button" disabled type="button">
+        <a className="button" href="#dnes-spustit-tv">
           <CheckSquare size={17} aria-hidden="true" />
-          Otevřít workflow - čeká na detail
-        </button>
+          Otevřít dnešní workflow
+        </a>
       </div>
     </article>
   );
@@ -451,7 +552,7 @@ function getLocationLabel(status: ProductionLocationStatus["blockingStatus"]) {
     needs_menu: "Chybí dnešní menu",
     needs_publish: "Chybí publish",
     needs_tv_online: "TV offline",
-    needs_export: "Chybí MP4",
+    needs_export: "Live publikováno",
     verify_tv: "Ověřit na TV"
   };
 

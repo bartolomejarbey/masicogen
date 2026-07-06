@@ -243,6 +243,10 @@ a {
   max-width: 100%;
 }
 
+.topbar.compact {
+  margin-bottom: 14px;
+}
+
 .eyebrow {
   margin: 0 0 7px;
   color: var(--red);
@@ -363,6 +367,48 @@ a {
 .production-metric strong {
   font-size: 34px;
   line-height: 1;
+}
+
+.module-section {
+  scroll-margin-top: 18px;
+  margin-bottom: 18px;
+}
+
+.module-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 14px;
+}
+
+.module-card {
+  scroll-margin-top: 18px;
+}
+
+.module-card-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.module-card-head svg {
+  flex: 0 0 auto;
+  color: var(--red);
+}
+
+.module-card h3 {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.12;
+}
+
+.module-card p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 .empty-state {
