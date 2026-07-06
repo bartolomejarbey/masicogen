@@ -45,6 +45,9 @@ export function TvComposition({
   showSafeArea = false
 }: TvCompositionProps) {
   const slide = deck.slides.find((item) => item.id === activeSlideId) ?? deck.slides[0];
+  const backgroundUrl = slide.backgroundAssetId
+    ? deck.assetUrls?.[slide.backgroundAssetId] ?? null
+    : null;
 
   return (
     <div style={rootStyle}>
@@ -52,12 +55,31 @@ export function TvComposition({
         style={{
           position: "absolute",
           inset: 0,
+          backgroundImage: backgroundUrl
+            ? `url("${backgroundUrl}")`
+            : undefined,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
           background:
-            slide.templateId === "special-offer"
-              ? "radial-gradient(circle at 82% 30%, rgba(183, 28, 28, .38), transparent 32%), linear-gradient(120deg, #171412 0%, #34231d 52%, #f4efe6 100%)"
-              : "linear-gradient(120deg, #fbfaf6 0%, #fff 46%, #f1e6d5 100%)"
+            backgroundUrl
+              ? undefined
+              : slide.templateId === "special-offer"
+                ? "radial-gradient(circle at 82% 30%, rgba(183, 28, 28, .38), transparent 32%), linear-gradient(120deg, #171412 0%, #34231d 52%, #f4efe6 100%)"
+                : "linear-gradient(120deg, #fbfaf6 0%, #fff 46%, #f1e6d5 100%)"
         }}
       />
+      {backgroundUrl ? (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              slide.templateId === "special-offer"
+                ? "linear-gradient(90deg, rgba(18,16,14,.88), rgba(18,16,14,.42) 58%, rgba(18,16,14,.18))"
+                : "linear-gradient(90deg, rgba(255,255,255,.92), rgba(255,255,255,.80) 58%, rgba(255,255,255,.32))"
+          }}
+        />
+      ) : null}
       <div
         style={{
           position: "absolute",

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { demoDeck, demoMenu, formatCzechDate } from "@masico/shared";
 import { MenuReview } from "@/components/MenuReview";
+import { ProductionQuickLaunch } from "@/components/ProductionQuickLaunch";
 import { StatusBadge } from "@/components/StatusBadge";
 import { StudioShell } from "@/components/StudioShell";
 import { TvStudioClient } from "@/components/TvStudioClient";
@@ -243,14 +244,14 @@ function ProductionHome({
           </p>
         </div>
         <div className="actions">
-          <button className="button" disabled type="button">
+          <a className="button primary" href="#dnes-spustit-tv">
             <FileUp size={18} aria-hidden="true" />
-            Import menu - čeká na produkční tok
-          </button>
-          <button className="button" disabled type="button">
+            Dnes spustit TV
+          </a>
+          <a className="button" href="#dnes-spustit-tv">
             <MonitorPlay size={18} aria-hidden="true" />
-            Spárovat TV - čeká na UI
-          </button>
+            TV web player
+          </a>
         </div>
       </div>
 
@@ -267,6 +268,8 @@ function ProductionHome({
         <ProductionDataError error={snapshot.dataError} />
       ) : (
         <>
+          <ProductionQuickLaunch snapshot={snapshot} />
+
           <section className="grid cols-3" aria-label="Produkční stav">
             <ProductionMetric label="Provozovny" value={snapshot.counts.locations} tone="info" />
             <ProductionMetric

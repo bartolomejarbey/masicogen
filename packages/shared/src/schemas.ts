@@ -213,6 +213,7 @@ export const deckManifestSchema = z.object({
   slides: z.array(slideSchema).min(1),
   templateVersionIds: z.array(z.string()),
   assetIds: z.array(z.string()).default([]),
+  assetUrls: z.record(z.string(), z.string().url()).default({}),
   rendererVersion: z.string()
 });
 
@@ -233,6 +234,7 @@ export const renderManifestSchema = z.object({
 });
 
 export const playerManifestSchema = z.object({
+  mode: z.literal("video").default("video"),
   screenId: z.string(),
   versionId: z.string(),
   status: z.enum(["published", "fallback"]),
@@ -242,6 +244,22 @@ export const playerManifestSchema = z.object({
   publishedAt: z.string(),
   heartbeatIntervalSeconds: z.literal(60)
 });
+
+export const livePlayerManifestSchema = z.object({
+  mode: z.literal("live"),
+  screenId: z.string(),
+  versionId: z.string(),
+  status: z.enum(["published", "fallback"]),
+  deck: deckManifestSchema,
+  menu: menuExtractionResultSchema,
+  publishedAt: z.string(),
+  heartbeatIntervalSeconds: z.literal(60)
+});
+
+export const playerPayloadSchema = z.discriminatedUnion("mode", [
+  playerManifestSchema,
+  livePlayerManifestSchema
+]);
 
 export type OrgRole = z.infer<typeof orgRoleSchema>;
 export type ApprovalStatus = z.infer<typeof approvalStatusSchema>;
@@ -254,3 +272,5 @@ export type Slide = z.infer<typeof slideSchema>;
 export type DeckManifest = z.infer<typeof deckManifestSchema>;
 export type RenderManifest = z.infer<typeof renderManifestSchema>;
 export type PlayerManifest = z.infer<typeof playerManifestSchema>;
+export type LivePlayerManifest = z.infer<typeof livePlayerManifestSchema>;
+export type PlayerPayload = z.infer<typeof playerPayloadSchema>;

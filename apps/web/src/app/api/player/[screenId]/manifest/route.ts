@@ -1,5 +1,5 @@
 import { demoPlayerManifest } from "@masico/shared";
-import { getPublishedPlayerManifest, playerDataConfigured } from "@/lib/player-data";
+import { getPublishedPlayerPayload, playerDataConfigured } from "@/lib/player-data";
 import { requireConfiguredIntegration, requireScreenAccess } from "@/lib/security";
 
 export async function GET(
@@ -13,9 +13,9 @@ export async function GET(
   }
 
   if (playerDataConfigured()) {
-    const manifest = await getPublishedPlayerManifest(screenId);
+    const manifest = await getPublishedPlayerPayload(screenId);
     if (!manifest) {
-      return Response.json({ error: "Obrazovka nemá publikovaný export." }, { status: 404 });
+      return Response.json({ error: "Obrazovka nemá publikovanou smyčku." }, { status: 404 });
     }
 
     return Response.json(manifest, {
@@ -45,6 +45,7 @@ function createLocalDemoManifest(request: Request, screenId: string) {
 
   return {
     ...demoPlayerManifest,
+    mode: "video" as const,
     screenId,
     videoUrl: videoUrl.toString(),
     checksum: "demo-smoke-render-v1"

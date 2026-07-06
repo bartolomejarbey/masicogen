@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { TvComposition } from "@masico/render";
-import { demoDeck, demoMenu, playerManifestSchema, type PlayerManifest } from "@masico/shared";
+import { demoDeck, demoMenu, playerPayloadSchema, type PlayerPayload } from "@masico/shared";
 import { ScaledTvFrame } from "./ScaledTvFrame";
 
 type TvPlayerProps = {
@@ -11,7 +11,7 @@ type TvPlayerProps = {
 };
 
 export function TvPlayer({ allowDemoFallback = false, screenId }: TvPlayerProps) {
-  const [manifest, setManifest] = useState<PlayerManifest | null>(null);
+  const [manifest, setManifest] = useState<PlayerPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const storageKey = useMemo(() => `masico-player-${screenId}`, [screenId]);
@@ -47,7 +47,7 @@ export function TvPlayer({ allowDemoFallback = false, screenId }: TvPlayerProps)
           const body = (await response.json().catch(() => null)) as { error?: string } | null;
           throw new Error(`manifest:${response.status}:${body?.error ?? "unknown"}`);
         }
-        const nextManifest = playerManifestSchema.parse(await response.json());
+        const nextManifest = playerPayloadSchema.parse(await response.json());
         if (!canceled) {
           setManifest(nextManifest);
           setVideoError(null);
@@ -57,7 +57,7 @@ export function TvPlayer({ allowDemoFallback = false, screenId }: TvPlayerProps)
         const cached = localStorage.getItem(storageKey);
         if (cached && !canceled) {
           try {
-            setManifest(playerManifestSchema.parse(JSON.parse(cached)));
+            setManifest(playerPayloadSchema.parse(JSON.parse(cached)));
             setError("Offline režim: přehrávám poslední uloženou verzi.");
           } catch {
             localStorage.removeItem(storageKey);
@@ -104,7 +104,10 @@ export function TvPlayer({ allowDemoFallback = false, screenId }: TvPlayerProps)
   }, [error, manifest?.versionId, screenId, tokenStorageKey, videoError]);
 
   const playableVideoUrl =
-    manifest?.videoUrl && !manifest.videoUrl.includes("example.com") && !videoError
+    manifest?.mode === "video" &&
+    manifest.videoUrl &&
+    !manifest.videoUrl.includes("example.com") &&
+    !videoError
       ? manifest.videoUrl
       : null;
 
@@ -127,6 +130,10 @@ export function TvPlayer({ allowDemoFallback = false, screenId }: TvPlayerProps)
           preload="auto"
           src={playableVideoUrl}
         />
+      ) : manifest?.mode === "live" && !videoError ? (
+        <div className="player-fallback">
+          <LiveTvLoop manifest={manifest} />
+        </div>
       ) : allowDemoFallback ? (
         <div className="player-fallback">
           <ScaledTvFrame>
@@ -141,6 +148,40 @@ export function TvPlayer({ allowDemoFallback = false, screenId }: TvPlayerProps)
         </div>
       )}
     </div>
+  );
+}
+
+function LiveTvLoop({ manifest }: { manifest: Extract<PlayerPayload, { mode: "live" }> }) {
+  const [activeSlideId, setActiveSlideId] = useState(manifest.deck.slides[0]?.id);
+
+  useEffect(() => {
+    if (manifest.deck.slides.length <= 1) {
+      setActiveSlideId(manifest.deck.slides[0]?.id);
+      return;
+    }
+
+    let slideIndex = Math.max(
+      manifest.deck.slides.findIndex((slide) => slide.id === activeSlideId),
+      0
+    );
+    const currentSlide = manifest.deck.slides[slideIndex] ?? manifest.deck.slides[0];
+    const timeout = window.setTimeout(() => {
+      slideIndex = (slideIndex + 1) % manifest.deck.slides.length;
+      setActiveSlideId(manifest.deck.slides[slideIndex]?.id);
+    }, Math.max((currentSlide.durationFrames / manifest.deck.fps) * 1000, 2500));
+
+    return () => window.clearTimeout(timeout);
+  }, [activeSlideId, manifest.deck]);
+
+  return (
+    <ScaledTvFrame>
+      <TvComposition
+        deck={manifest.deck}
+        menu={manifest.menu}
+        activeSlideId={activeSlideId}
+        showSafeArea={false}
+      />
+    </ScaledTvFrame>
   );
 }
 

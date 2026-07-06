@@ -1,4 +1,11 @@
-import { type PlayerManifest, playerManifestSchema } from "@masico/shared";
+import {
+  deckManifestSchema,
+  menuExtractionResultSchema,
+  playerManifestSchema,
+  playerPayloadSchema,
+  type PlayerManifest,
+  type PlayerPayload
+} from "@masico/shared";
 import { getSupabaseAdmin, supabaseAdminConfigured } from "./supabase-admin";
 
 type ScreenRow = {
@@ -21,11 +28,33 @@ type ExportRow = {
   duration_seconds: number | string | null;
 };
 
+type DeckVersionRow = {
+  id: string;
+  menu_version_id: string;
+  manifest_json: unknown;
+};
+
+type MenuVersionRow = {
+  id: string;
+  snapshot: unknown;
+};
+
+type AssetRow = {
+  id: string;
+  bucket: string;
+  object_path: string;
+};
+
 export function playerDataConfigured() {
   return supabaseAdminConfigured();
 }
 
 export async function getPublishedPlayerManifest(screenId: string): Promise<PlayerManifest | null> {
+  const payload = await getPublishedPlayerPayload(screenId);
+  return payload?.mode === "video" ? payload : null;
+}
+
+export async function getPublishedPlayerPayload(screenId: string): Promise<PlayerPayload | null> {
   const supabase = getSupabaseAdmin();
   if (!supabase) {
     return null;
@@ -50,7 +79,6 @@ export async function getPublishedPlayerManifest(screenId: string): Promise<Play
     .select("deck_version_id, export_id, created_at")
     .eq("org_id", screen.org_id)
     .eq("screen_id", screen.id)
-    .not("export_id", "is", null)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle<PublishEventRow>();
@@ -59,8 +87,17 @@ export async function getPublishedPlayerManifest(screenId: string): Promise<Play
     throw new Error(`Publish event lookup failed: ${publishError.message}`);
   }
 
-  if (!publishEvent?.export_id) {
+  if (!publishEvent) {
     return null;
+  }
+
+  if (!publishEvent.export_id) {
+    return getPublishedLivePlayerPayload({
+      screenId,
+      orgId: screen.org_id,
+      deckVersionId: publishEvent.deck_version_id,
+      publishedAt: publishEvent.created_at
+    });
   }
 
   const { data: exportRow, error: exportError } = await supabase
@@ -89,6 +126,7 @@ export async function getPublishedPlayerManifest(screenId: string): Promise<Play
   }
 
   return playerManifestSchema.parse({
+    mode: "video",
     screenId,
     versionId: publishEvent.deck_version_id,
     status: "published",
@@ -98,6 +136,100 @@ export async function getPublishedPlayerManifest(screenId: string): Promise<Play
     publishedAt: publishEvent.created_at,
     heartbeatIntervalSeconds: 60
   });
+}
+
+async function getPublishedLivePlayerPayload(input: {
+  screenId: string;
+  orgId: string;
+  deckVersionId: string;
+  publishedAt: string;
+}): Promise<PlayerPayload | null> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    return null;
+  }
+
+  const { data: deckVersion, error: deckError } = await supabase
+    .from("deck_versions")
+    .select("id, menu_version_id, manifest_json")
+    .eq("org_id", input.orgId)
+    .eq("id", input.deckVersionId)
+    .maybeSingle<DeckVersionRow>();
+
+  if (deckError) {
+    throw new Error(`Live deck lookup failed: ${deckError.message}`);
+  }
+
+  if (!deckVersion) {
+    return null;
+  }
+
+  const { data: menuVersion, error: menuError } = await supabase
+    .from("menu_versions")
+    .select("id, snapshot")
+    .eq("org_id", input.orgId)
+    .eq("id", deckVersion.menu_version_id)
+    .maybeSingle<MenuVersionRow>();
+
+  if (menuError) {
+    throw new Error(`Live menu lookup failed: ${menuError.message}`);
+  }
+
+  if (!menuVersion) {
+    return null;
+  }
+
+  const deck = deckManifestSchema.parse(deckVersion.manifest_json);
+  const assetUrls = await getAssetSignedUrls(input.orgId, deck.assetIds);
+
+  return playerPayloadSchema.parse({
+    mode: "live",
+    screenId: input.screenId,
+    versionId: input.deckVersionId,
+    status: "published",
+    deck: {
+      ...deck,
+      status: "published",
+      assetUrls
+    },
+    menu: menuExtractionResultSchema.parse(menuVersion.snapshot),
+    publishedAt: input.publishedAt,
+    heartbeatIntervalSeconds: 60
+  });
+}
+
+async function getAssetSignedUrls(orgId: string, assetIds: string[]) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase || assetIds.length === 0) {
+    return {};
+  }
+
+  const { data: assets, error } = await supabase
+    .from("assets")
+    .select("id, bucket, object_path")
+    .eq("org_id", orgId)
+    .in("id", assetIds)
+    .returns<AssetRow[]>();
+
+  if (error) {
+    throw new Error(`Live asset lookup failed: ${error.message}`);
+  }
+
+  const signedPairs = await Promise.all(
+    (assets ?? []).map(async (asset) => {
+      const { data, error: signedError } = await supabase.storage
+        .from(asset.bucket)
+        .createSignedUrl(asset.object_path, 15 * 60);
+
+      if (signedError || !data?.signedUrl) {
+        throw new Error(`Live asset signed URL failed: ${signedError?.message ?? "missing URL"}`);
+      }
+
+      return [asset.id, data.signedUrl] as const;
+    })
+  );
+
+  return Object.fromEntries(signedPairs);
 }
 
 export async function recordPlayerHeartbeat(input: {

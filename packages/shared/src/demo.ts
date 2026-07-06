@@ -144,10 +144,12 @@ export const demoDeck: DeckManifest = {
     "allergen-legend@1"
   ],
   assetIds: [],
+  assetUrls: {},
   rendererVersion: "0.1.0"
 };
 
 export const demoPlayerManifest: PlayerManifest = {
+  mode: "video",
   screenId: "screen-demo",
   versionId: "deck-demo",
   status: "published",

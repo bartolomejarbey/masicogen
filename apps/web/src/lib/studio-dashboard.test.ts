@@ -13,6 +13,7 @@ describe("production studio dashboard summary", () => {
         { id: "loc-1", name: "Jídelna" },
         { id: "loc-2", name: "Výdejna" }
       ],
+      canteens: [{ id: "canteen-1", location_id: "loc-1", name: "Hlavní jídelna" }],
       screens: [
         {
           id: "screen-1",
@@ -62,6 +63,9 @@ describe("production studio dashboard summary", () => {
       screenCount: 0,
       blockingStatus: "empty"
     });
+    expect(snapshot.canteens).toEqual([
+      { id: "canteen-1", locationId: "loc-1", name: "Hlavní jídelna" }
+    ]);
 
     vi.useRealTimers();
   });

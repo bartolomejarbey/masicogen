@@ -21,6 +21,7 @@ export type ProductionDashboardSnapshot = {
   orgName: string;
   todayIso: string;
   locations: ProductionLocationStatus[];
+  canteens: ProductionCanteen[];
   counts: {
     locations: number;
     screens: number;
@@ -30,6 +31,12 @@ export type ProductionDashboardSnapshot = {
     renderJobsRunning: number;
   };
   dataError: string | null;
+};
+
+export type ProductionCanteen = {
+  id: string;
+  locationId: string;
+  name: string;
 };
 
 type OrganizationRow = {
@@ -57,6 +64,12 @@ export type MenuRow = {
   current_version_id: string | null;
 };
 
+type CanteenRow = {
+  id: string;
+  location_id: string;
+  name: string;
+};
+
 type ExportRow = {
   id: string;
 };
@@ -72,7 +85,15 @@ export async function getProductionDashboardSnapshot(
   const todayIso = getPragueTodayIso();
   const supabase = await createServerSupabaseClient();
 
-  const [orgResult, locationsResult, screensResult, menusResult, exportsResult, renderJobsResult] =
+  const [
+    orgResult,
+    locationsResult,
+    canteensResult,
+    screensResult,
+    menusResult,
+    exportsResult,
+    renderJobsResult
+  ] =
     await Promise.all([
       supabase
         .from("organizations")
@@ -85,6 +106,12 @@ export async function getProductionDashboardSnapshot(
         .eq("org_id", orgId)
         .order("created_at", { ascending: true })
         .returns<LocationRow[]>(),
+      supabase
+        .from("canteens")
+        .select("id, location_id, name")
+        .eq("org_id", orgId)
+        .order("created_at", { ascending: true })
+        .returns<CanteenRow[]>(),
       supabase
         .from("screens")
         .select("id, location_id, status, current_deck_version_id, last_heartbeat_at")
@@ -114,6 +141,7 @@ export async function getProductionDashboardSnapshot(
   const dataError = [
     orgResult.error ? `organizations: ${orgResult.error.message}` : null,
     locationsResult.error ? `locations: ${locationsResult.error.message}` : null,
+    canteensResult.error ? `canteens: ${canteensResult.error.message}` : null,
     screensResult.error ? `screens: ${screensResult.error.message}` : null,
     menusResult.error ? `menus: ${menusResult.error.message}` : null,
     exportsResult.error ? `exports: ${exportsResult.error.message}` : null,
@@ -127,6 +155,7 @@ export async function getProductionDashboardSnapshot(
     orgName: orgResult.data?.name ?? "MASI-CO",
     todayIso,
     locations: locationsResult.data ?? [],
+    canteens: canteensResult.data ?? [],
     screens: screensResult.data ?? [],
     menus: menusResult.data ?? [],
     exportCount: exportsResult.data?.length ?? 0,
@@ -140,6 +169,7 @@ export function summarizeProductionDashboard(input: {
   orgName: string;
   todayIso: string;
   locations: LocationRow[];
+  canteens: CanteenRow[];
   screens: ScreenRow[];
   menus: MenuRow[];
   exportCount: number;
@@ -176,6 +206,11 @@ export function summarizeProductionDashboard(input: {
     orgName: input.orgName,
     todayIso: input.todayIso,
     locations: locationStatuses,
+    canteens: input.canteens.map((canteen) => ({
+      id: canteen.id,
+      locationId: canteen.location_id,
+      name: canteen.name
+    })),
     counts: {
       locations: input.locations.length,
       screens: input.screens.length,

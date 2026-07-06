@@ -729,6 +729,124 @@ a {
   background: rgba(183, 121, 31, 0.13);
 }
 
+.launch-panel {
+  margin-bottom: 22px;
+  border-color: rgba(183, 28, 28, 0.22);
+  background: linear-gradient(180deg, #fffdf9 0%, #fff8f1 100%);
+}
+
+.launch-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.launch-form label {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.launch-form input,
+.launch-form select,
+.launch-form textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+}
+
+.launch-form input,
+.launch-form select {
+  min-height: 44px;
+  padding: 0 12px;
+}
+
+.launch-form textarea {
+  resize: vertical;
+  padding: 12px;
+  line-height: 1.45;
+}
+
+.launch-wide {
+  grid-column: 1 / -1;
+}
+
+.launch-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+}
+
+.launch-error {
+  margin-top: 14px;
+  border: 1px solid rgba(183, 28, 28, 0.22);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--red);
+  background: rgba(183, 28, 28, 0.08);
+  font-weight: 760;
+}
+
+.launch-result {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  border: 1px solid rgba(31, 122, 77, 0.24);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(31, 122, 77, 0.08);
+}
+
+.launch-result > div {
+  display: grid;
+  min-width: min(100%, 320px);
+  flex: 1 1 340px;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: center;
+}
+
+.launch-result > div span {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.launch-result a:not(.button) {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(39, 106, 134, 0.22);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: var(--blue);
+  background: rgba(39, 106, 134, 0.08);
+  font-weight: 800;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .import-summary {
   display: grid;
   gap: 8px;

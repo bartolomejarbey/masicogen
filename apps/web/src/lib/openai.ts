@@ -94,7 +94,10 @@ export async function generateBackgroundImage(input: {
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI image generation failed: ${response.status}`);
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `OpenAI image generation failed: ${response.status}${detail ? ` ${detail.slice(0, 500)}` : ""}`
+    );
   }
 
   return response.json() as Promise<{
