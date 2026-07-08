@@ -293,6 +293,69 @@ const dailyLoopRules = {
 const cornerLogo = logo("brand-logo", { x: 128, y: 72, w: 300, h: 88, zIndex: 6 });
 
 /**
+ * Červený footer s legendou alergenů — převzatý z paty tištěného lístku.
+ * Uzavírá kompozici každého slidu.
+ */
+function brandFooter(): Array<TextLayerV2 | ShapeLayerV2> {
+  return [
+    shape("brand-footer", { x: 0, y: 1012, w: 1920, h: 68, zIndex: 5 }, {
+      fill: brandTokens.red,
+      locked: true
+    }),
+    text("brand-footer-text", { x: 64, y: 1029, w: 1792, h: 36, zIndex: 6 }, {
+      role: "note",
+      text: "Alergeny: 1 obiloviny · 3 vejce · 4 ryby · 6 sója · 7 mléko · 9 celer · 10 hořčice · 12 siřičitany",
+      color: "#ffffff",
+      align: "center",
+      fontSizePx: 30,
+      fontWeight: 600,
+      fontStyle: "italic",
+      maxLines: 1,
+      locked: true
+    })
+  ];
+}
+
+/** Datum dne v pravém horním rohu — vyvažuje logo a dodává kontext „dnes". */
+function dateBadge(): TextLayerV2 {
+  return text("date-badge", { x: 1100, y: 118, w: 692, h: 48, zIndex: 6 }, {
+    role: "subheadline",
+    binding: { source: "menu", field: "date" },
+    color: brandTokens.red,
+    align: "right",
+    fontSizePx: 34,
+    fontWeight: 600,
+    fontStyle: "italic",
+    maxLines: 1,
+    locked: true
+  });
+}
+
+/** Svislá červená linka mezi alergeny a cenou — prvek z tištěného lístku. */
+function columnDivider(id: string, y: number, h: number): ShapeLayerV2 {
+  return shape(id, { x: 1620, y, w: 2, h, zIndex: 1 }, {
+    fill: brandTokens.red,
+    opacity: 0.55,
+    locked: true
+  });
+}
+
+/** Malý sekční štítek (POLÉVKY / HLAVNÍ JÍDLA) na přehledovém slidu. */
+function sectionLabel(id: string, label: string, y: number): TextLayerV2 {
+  return text(id, { x: 168, y, w: 700, h: 38, zIndex: 2 }, {
+    role: "subheadline",
+    text: label,
+    color: brandTokens.red,
+    fontSizePx: 30,
+    fontWeight: 700,
+    lineHeight: 1,
+    maxLines: 1,
+    uppercase: true,
+    locked: true
+  });
+}
+
+/**
  * Nadpis sekce jako červená pilulka s bílými verzálkami — stejný prvek, jakým
  * tištěný jídelní lístek značí dny (PONDĚLÍ, ÚTERÝ…).
  */
@@ -350,28 +413,29 @@ function soupCard(index: number): Array<TextLayerV2 | ImageLayerV2 | ShapeLayerV
       maxLines: 1,
       group
     }),
-    text(`soup-${index}-allergens`, { x: x + 424, y: 906, w: 340, h: 64, zIndex: 2 }, {
+    text(`soup-${index}-allergens`, { x: x + 424, y: 902, w: 340, h: 60, zIndex: 2 }, {
       role: "note",
       binding: itemBinding("soups", index, "allergens"),
       color: brandTokens.red,
       align: "right",
-      fontSizePx: 34,
+      fontSizePx: 36,
       fontStyle: "italic",
+      maxLines: 1,
       group
     })
   ];
 }
 
-function mainRow(index: number): Array<TextLayerV2 | ImageLayerV2> {
-  const y = 190 + index * 164;
+function mainRow(index: number): Array<TextLayerV2 | ImageLayerV2 | ShapeLayerV2> {
+  const y = 196 + index * 160;
   const group = `main-${index}`;
-  return [
-    image(`main-${index}-photo`, { x: 128, y, w: 152, h: 152, zIndex: 2 }, {
+  const layers: Array<TextLayerV2 | ImageLayerV2 | ShapeLayerV2> = [
+    image(`main-${index}-photo`, { x: 128, y, w: 148, h: 148, zIndex: 2 }, {
       binding: itemBinding("mains", index, "photo"),
       cornerRadius: 16,
       group
     }),
-    text(`main-${index}-name`, { x: 312, y: y + 4, w: 1080, h: 144, zIndex: 2 }, {
+    text(`main-${index}-name`, { x: 312, y: y + 4, w: 1080, h: 140, zIndex: 2 }, {
       binding: itemBinding("mains", index, "name"),
       fontSizePx: 44,
       fontWeight: 700,
@@ -379,16 +443,7 @@ function mainRow(index: number): Array<TextLayerV2 | ImageLayerV2> {
       maxLines: 2,
       group
     }),
-    text(`main-${index}-allergens`, { x: 1400, y: y + 98, w: 240, h: 52, zIndex: 2 }, {
-      role: "note",
-      binding: itemBinding("mains", index, "allergens"),
-      color: brandTokens.red,
-      align: "right",
-      fontSizePx: 32,
-      fontStyle: "italic",
-      group
-    }),
-    text(`main-${index}-price`, { x: 1420, y: y + 8, w: 372, h: 84, zIndex: 2 }, {
+    text(`main-${index}-price`, { x: 1420, y: y + 6, w: 372, h: 76, zIndex: 2 }, {
       role: "price",
       binding: itemBinding("mains", index, "price"),
       color: brandTokens.ink,
@@ -397,12 +452,34 @@ function mainRow(index: number): Array<TextLayerV2 | ImageLayerV2> {
       fontWeight: 700,
       maxLines: 1,
       group
+    }),
+    text(`main-${index}-allergens`, { x: 1420, y: y + 96, w: 372, h: 44, zIndex: 2 }, {
+      role: "note",
+      binding: itemBinding("mains", index, "allergens"),
+      color: brandTokens.red,
+      align: "right",
+      fontSizePx: 34,
+      fontStyle: "italic",
+      maxLines: 1,
+      group
     })
   ];
+
+  // Jemná linka mezi jídly — rytmus tištěného lístku.
+  if (index < 4) {
+    layers.push(
+      shape(`main-${index}-rule`, { x: 128, y: y + 154, w: 1664, h: 2, zIndex: 1 }, {
+        fill: brandTokens.border,
+        group
+      })
+    );
+  }
+
+  return layers;
 }
 
 function buffetRow(index: number): Array<TextLayerV2 | ShapeLayerV2> {
-  const y = 200 + index * 112;
+  const y = 250 + index * 112;
   const group = `buffet-${index}`;
   const layers: Array<TextLayerV2 | ShapeLayerV2> = [
     text(`buffet-${index}-name`, { x: 168, y: y + 20, w: 1010, h: 72, zIndex: 3 }, {
@@ -412,15 +489,17 @@ function buffetRow(index: number): Array<TextLayerV2 | ShapeLayerV2> {
       maxLines: 1,
       group
     }),
-    text(`buffet-${index}-allergens`, { x: 1200, y: y + 34, w: 240, h: 56, zIndex: 3 }, {
+    text(`buffet-${index}-allergens`, { x: 1310, y: y + 34, w: 250, h: 48, zIndex: 3 }, {
       role: "note",
       binding: itemBinding("buffet", index, "allergens"),
       color: brandTokens.red,
-      fontSizePx: 32,
+      align: "right",
+      fontSizePx: 34,
       fontStyle: "italic",
+      maxLines: 1,
       group
     }),
-    text(`buffet-${index}-price`, { x: 1420, y: y + 20, w: 332, h: 72, zIndex: 3 }, {
+    text(`buffet-${index}-price`, { x: 1420, y: y + 20, w: 372, h: 72, zIndex: 3 }, {
       role: "price",
       binding: itemBinding("buffet", index, "price"),
       color: brandTokens.ink,
@@ -474,8 +553,9 @@ function specialCard(index: number): Array<TextLayerV2 | ImageLayerV2 | ShapeLay
       role: "note",
       binding: itemBinding("special", index, "allergens"),
       color: brandTokens.red,
-      fontSizePx: 32,
+      fontSizePx: 34,
       fontStyle: "italic",
+      maxLines: 1,
       group
     }),
     text(`special-${index}-price`, { x: x + 28, y: 856, w: 466, h: 90, zIndex: 2 }, {
@@ -492,30 +572,30 @@ function specialCard(index: number): Array<TextLayerV2 | ImageLayerV2 | ShapeLay
 
 /** Řádek polévky na přehledovém slidu — červená kurzíva jako v tištěném lístku. */
 function overviewSoupRow(index: number): TextLayerV2[] {
-  const y = 262 + index * 88;
+  const y = 262 + index * 82;
   const group = `overview-soup-${index}`;
   return [
-    text(`overview-soup-${index}-name`, { x: 168, y, w: 970, h: 76, zIndex: 2 }, {
+    text(`overview-soup-${index}-name`, { x: 168, y, w: 1000, h: 70, zIndex: 2 }, {
       binding: itemBinding("soups", index, "name"),
       color: brandTokens.red,
-      fontSizePx: 42,
+      fontSizePx: 40,
       fontWeight: 600,
       fontStyle: "italic",
       lineHeight: 1.05,
       maxLines: 1,
       group
     }),
-    text(`overview-soup-${index}-allergens`, { x: 1160, y: y + 12, w: 250, h: 44, zIndex: 2 }, {
+    text(`overview-soup-${index}-allergens`, { x: 1310, y: y + 8, w: 250, h: 44, zIndex: 2 }, {
       role: "note",
       binding: itemBinding("soups", index, "allergens"),
       color: brandTokens.red,
       align: "right",
-      fontSizePx: 30,
+      fontSizePx: 32,
       fontStyle: "italic",
       maxLines: 1,
       group
     }),
-    text(`overview-soup-${index}-price`, { x: 1440, y, w: 352, h: 76, zIndex: 2 }, {
+    text(`overview-soup-${index}-price`, { x: 1440, y, w: 352, h: 70, zIndex: 2 }, {
       role: "price",
       binding: itemBinding("soups", index, "price"),
       color: brandTokens.ink,
@@ -530,28 +610,28 @@ function overviewSoupRow(index: number): TextLayerV2[] {
 
 /** Řádek hlavního jídla na přehledovém slidu. */
 function overviewMainRow(index: number): TextLayerV2[] {
-  const y = 456 + index * 94;
+  const y = 492 + index * 86;
   const group = `overview-main-${index}`;
   return [
-    text(`overview-main-${index}-name`, { x: 168, y, w: 970, h: 84, zIndex: 2 }, {
+    text(`overview-main-${index}-name`, { x: 168, y, w: 1000, h: 78, zIndex: 2 }, {
       binding: itemBinding("mains", index, "name"),
-      fontSizePx: 38,
+      fontSizePx: 36,
       fontWeight: 700,
-      lineHeight: 1.08,
+      lineHeight: 1.06,
       maxLines: 2,
       group
     }),
-    text(`overview-main-${index}-allergens`, { x: 1160, y: y + 10, w: 250, h: 44, zIndex: 2 }, {
+    text(`overview-main-${index}-allergens`, { x: 1310, y: y + 8, w: 250, h: 44, zIndex: 2 }, {
       role: "note",
       binding: itemBinding("mains", index, "allergens"),
       color: brandTokens.red,
       align: "right",
-      fontSizePx: 30,
+      fontSizePx: 32,
       fontStyle: "italic",
       maxLines: 1,
       group
     }),
-    text(`overview-main-${index}-price`, { x: 1440, y, w: 352, h: 76, zIndex: 2 }, {
+    text(`overview-main-${index}-price`, { x: 1440, y, w: 352, h: 70, zIndex: 2 }, {
       role: "price",
       binding: itemBinding("mains", index, "price"),
       color: brandTokens.ink,
@@ -580,47 +660,58 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
     layers: [
       cornerLogo,
       ...headlinePill("Denní menu", 620),
-      text("intro-date", { x: 260, y: 198, w: 1400, h: 50, zIndex: 2 }, {
-        role: "subheadline",
-        binding: { source: "menu", field: "date" },
-        color: brandTokens.red,
-        align: "center",
-        fontSizePx: 36,
-        fontWeight: 600,
-        fontStyle: "italic",
-        maxLines: 1
-      }),
+      dateBadge(),
+      sectionLabel("overview-label-soups", "Polévky", 214),
       ...overviewSoupRow(0),
       ...overviewSoupRow(1),
+      sectionLabel("overview-label-mains", "Hlavní jídla", 444),
       ...overviewMainRow(0),
       ...overviewMainRow(1),
       ...overviewMainRow(2),
       ...overviewMainRow(3),
       ...overviewMainRow(4),
-      // Výhodné menu dne — lososový pruh jako v tištěném lístku.
-      shape("overview-combo-bar", { x: 128, y: 940, w: 1664, h: 64, zIndex: 1 }, {
+      columnDivider("overview-divider", 262, 652),
+      // Výhodné menu dne — lososový pruh s červeným proužkem jako v lístku.
+      shape("overview-combo-bar", { x: 128, y: 930, w: 1664, h: 66, zIndex: 1 }, {
         fill: brandTokens.salmon,
         opacity: 0.6,
         cornerRadius: 12,
         group: "overview-combo-0"
       }),
-      text("overview-combo-name", { x: 168, y: 952, w: 1230, h: 44, zIndex: 2 }, {
+      shape("overview-combo-strip", { x: 128, y: 930, w: 6, h: 66, zIndex: 2 }, {
+        fill: brandTokens.red,
+        group: "overview-combo-0"
+      }),
+      text("overview-combo-name", { x: 168, y: 948, w: 940, h: 36, zIndex: 2 }, {
         binding: itemBinding("special", 0, "name"),
-        fontSizePx: 34,
+        fontSizePx: 30,
+        fontWeight: 700,
+        lineHeight: 1,
+        maxLines: 1,
+        group: "overview-combo-0"
+      }),
+      text("overview-combo-allergens", { x: 1120, y: 950, w: 290, h: 36, zIndex: 2 }, {
+        role: "note",
+        binding: itemBinding("special", 0, "allergens"),
+        color: brandTokens.red,
+        align: "right",
+        fontSizePx: 30,
+        fontStyle: "italic",
+        lineHeight: 1,
+        maxLines: 1,
+        group: "overview-combo-0"
+      }),
+      text("overview-combo-price", { x: 1440, y: 940, w: 352, h: 48, zIndex: 2 }, {
+        role: "price",
+        binding: itemBinding("special", 0, "price"),
+        color: brandTokens.red,
+        align: "right",
+        fontSizePx: 38,
         fontWeight: 700,
         maxLines: 1,
         group: "overview-combo-0"
       }),
-      text("overview-combo-price", { x: 1440, y: 952, w: 352, h: 44, zIndex: 2 }, {
-        role: "price",
-        binding: itemBinding("special", 0, "price"),
-        color: brandTokens.ink,
-        align: "right",
-        fontSizePx: 34,
-        fontWeight: 700,
-        maxLines: 1,
-        group: "overview-combo-0"
-      })
+      ...brandFooter()
     ],
     validationRules: {
       ...dailyLoopRules,
@@ -642,7 +733,7 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
     backgroundAssetId: null,
     durationFrames: 240,
     transition: "fade",
-    layers: [cornerLogo, ...headlinePill("Polévky"), ...soupCard(0), ...soupCard(1)],
+    layers: [cornerLogo, ...headlinePill("Polévky"), dateBadge(), ...soupCard(0), ...soupCard(1), ...brandFooter()],
     validationRules: {
       ...dailyLoopRules,
       maxItemsPerSlide: 2,
@@ -665,11 +756,13 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
     layers: [
       cornerLogo,
       ...headlinePill("Hlavní jídla", 640),
+      dateBadge(),
       ...mainRow(0),
       ...mainRow(1),
       ...mainRow(2),
       ...mainRow(3),
-      ...mainRow(4)
+      ...mainRow(4),
+      ...brandFooter()
     ],
     validationRules: {
       ...dailyLoopRules,
@@ -711,15 +804,19 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
         maxLines: 1,
         uppercase: true
       }),
-      text("pizza-name", { x: 128, y: 380, w: 820, h: 270, zIndex: 2 }, {
+      text("pizza-name", { x: 128, y: 380, w: 840, h: 200, zIndex: 2 }, {
         role: "headline",
         binding: itemBinding("pizza", 0, "name"),
-        fontSizePx: 82,
+        fontSizePx: 88,
         fontWeight: 700,
         lineHeight: 1.05,
-        maxLines: 3
+        maxLines: 2
       }),
-      text("pizza-description", { x: 128, y: 650, w: 820, h: 130, zIndex: 2 }, {
+      shape("pizza-rule", { x: 128, y: 600, w: 500, h: 6, zIndex: 2 }, {
+        fill: brandTokens.salmon,
+        cornerRadius: 3
+      }),
+      text("pizza-description", { x: 128, y: 640, w: 840, h: 130, zIndex: 2 }, {
         role: "note",
         binding: itemBinding("pizza", 0, "description"),
         color: brandTokens.red,
@@ -727,13 +824,13 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
         fontWeight: 600,
         fontStyle: "italic",
         lineHeight: 1.2,
-        maxLines: 3
+        maxLines: 2
       }),
-      shape("pizza-price-plate", { x: 128, y: 790, w: 360, h: 150, zIndex: 2 }, {
+      shape("pizza-price-plate", { x: 128, y: 800, w: 400, h: 150, zIndex: 2 }, {
         fill: brandTokens.red,
         cornerRadius: 16
       }),
-      text("pizza-price", { x: 148, y: 812, w: 320, h: 106, zIndex: 3 }, {
+      text("pizza-price", { x: 148, y: 826, w: 360, h: 106, zIndex: 3 }, {
         role: "price",
         binding: itemBinding("pizza", 0, "price"),
         color: brandTokens.white,
@@ -743,13 +840,15 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
         lineHeight: 1,
         maxLines: 1
       }),
-      text("pizza-allergens", { x: 128, y: 956, w: 640, h: 52, zIndex: 2 }, {
+      text("pizza-allergens", { x: 568, y: 856, w: 380, h: 48, zIndex: 2 }, {
         role: "note",
         binding: itemBinding("pizza", 0, "allergens"),
         color: brandTokens.red,
-        fontSizePx: 34,
-        fontStyle: "italic"
-      })
+        fontSizePx: 36,
+        fontStyle: "italic",
+        maxLines: 1
+      }),
+      ...brandFooter()
     ],
     validationRules: {
       ...dailyLoopRules,
@@ -773,13 +872,15 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
     layers: [
       cornerLogo,
       ...headlinePill("Teplý bufet", 620),
+      dateBadge(),
       ...buffetRow(0),
       ...buffetRow(1),
       ...buffetRow(2),
       ...buffetRow(3),
       ...buffetRow(4),
       ...buffetRow(5),
-      ...buffetRow(6)
+      ...buffetRow(6),
+      ...brandFooter()
     ],
     validationRules: {
       ...dailyLoopRules,
@@ -804,9 +905,11 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
     layers: [
       cornerLogo,
       ...headlinePill("Dnes navíc", 600),
+      dateBadge(),
       ...specialCard(0),
       ...specialCard(1),
-      ...specialCard(2)
+      ...specialCard(2),
+      ...brandFooter()
     ],
     validationRules: {
       ...dailyLoopRules,

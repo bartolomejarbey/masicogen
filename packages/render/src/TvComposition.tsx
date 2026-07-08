@@ -684,6 +684,9 @@ function TextLayer({
         WebkitBoxOrient: "vertical",
         WebkitLineClamp: layer.maxLines,
         overflow: "hidden",
+        // line-clamp jen přidává výpustku; skutečný ořez je overflow na výšce
+        // boxu — maxHeight zabrání prosvítání dalšího řádku.
+        maxHeight: `${Math.ceil(layer.maxLines * layer.fontSizePx * layer.lineHeight) + 4}px`,
         color: layer.color,
         textAlign: layer.align,
         fontSize: `${layer.fontSizePx}px`,
@@ -698,6 +701,14 @@ function TextLayer({
   );
 }
 
+/**
+ * Česká sazba: jednopísmenné předložky a spojky se nesmí ocitnout na konci
+ * řádku — za s/z/k/v/o/u/a/i se vkládá nezlomitelná mezera.
+ */
+function fixCzechTypography(value: string) {
+  return value.replace(/(^|[\s(„])([szkvouaiSZKVOUAI])[ ]+/g, "$1$2 ");
+}
+
 function resolveTextContent(
   layer: TextLayerV2,
   item: MenuExtractionItem | null,
@@ -707,7 +718,7 @@ function resolveTextContent(
   const binding = layer.binding;
 
   if (!binding || binding.source === "static") {
-    return layer.text;
+    return layer.text ? fixCzechTypography(layer.text) : layer.text;
   }
 
   if (binding.source === "menu") {
@@ -715,7 +726,7 @@ function resolveTextContent(
       return formatCzechDate(menu.date);
     }
 
-    return slide.title;
+    return fixCzechTypography(slide.title);
   }
 
   if (!item) {
@@ -724,9 +735,9 @@ function resolveTextContent(
 
   switch (binding.field) {
     case "name":
-      return item.name;
+      return fixCzechTypography(item.name);
     case "description":
-      return item.description;
+      return item.description ? fixCzechTypography(item.description) : null;
     case "price":
       return formatCzk(item.prices[0]?.amount ?? null);
     case "allergens":
