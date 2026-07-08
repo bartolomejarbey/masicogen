@@ -233,6 +233,7 @@ function text(
     align: options.align ?? "left",
     fontSizePx: options.fontSizePx,
     fontWeight: options.fontWeight ?? 700,
+    fontStyle: options.fontStyle ?? "normal",
     lineHeight: options.lineHeight ?? 1.1,
     maxLines: options.maxLines ?? 2,
     overflow: options.overflow ?? "truncate",
@@ -291,17 +292,29 @@ const dailyLoopRules = {
 
 const cornerLogo = logo("brand-logo", { x: 128, y: 72, w: 300, h: 88, zIndex: 6 });
 
-function headline(label: string): TextLayerV2 {
-  return text("headline", { x: 128, y: 84, w: 1664, h: 104, zIndex: 2 }, {
-    role: "headline",
-    text: label,
-    align: "center",
-    fontSizePx: 84,
-    fontWeight: 900,
-    lineHeight: 1,
-    maxLines: 1,
-    uppercase: true
-  });
+/**
+ * Nadpis sekce jako červená pilulka s bílými verzálkami — stejný prvek, jakým
+ * tištěný jídelní lístek značí dny (PONDĚLÍ, ÚTERÝ…).
+ */
+function headlinePill(label: string, width = 560): Array<TextLayerV2 | ShapeLayerV2> {
+  const x = Math.round((1920 - width) / 2);
+  return [
+    shape("headline-pill", { x, y: 84, w: width, h: 104, zIndex: 2 }, {
+      fill: brandTokens.red,
+      cornerRadius: 999
+    }),
+    text("headline", { x, y: 108, w: width, h: 62, zIndex: 3 }, {
+      role: "headline",
+      text: label,
+      color: "#ffffff",
+      align: "center",
+      fontSizePx: 54,
+      fontWeight: 700,
+      lineHeight: 1,
+      maxLines: 1,
+      uppercase: true
+    })
+  ];
 }
 
 function soupCard(index: number): Array<TextLayerV2 | ImageLayerV2 | ShapeLayerV2> {
@@ -309,7 +322,7 @@ function soupCard(index: number): Array<TextLayerV2 | ImageLayerV2 | ShapeLayerV
   const group = `soup-${index}`;
   return [
     shape(`soup-${index}-card`, { x, y: 240, w: 800, h: 760, zIndex: 1 }, {
-      fill: brandTokens.card,
+      fill: brandTokens.cream,
       cornerRadius: 24,
       group
     }),
@@ -318,27 +331,32 @@ function soupCard(index: number): Array<TextLayerV2 | ImageLayerV2 | ShapeLayerV
       cornerRadius: 24,
       group
     }),
-    text(`soup-${index}-name`, { x: x + 32, y: 730, w: 736, h: 140, zIndex: 2 }, {
+    text(`soup-${index}-name`, { x: x + 36, y: 730, w: 728, h: 140, zIndex: 2 }, {
       binding: itemBinding("soups", index, "name"),
-      fontSizePx: 54,
-      fontWeight: 850,
+      color: brandTokens.red,
+      fontSizePx: 52,
+      fontWeight: 700,
+      fontStyle: "italic",
+      lineHeight: 1.12,
       maxLines: 2,
       group
     }),
-    text(`soup-${index}-price`, { x: x + 32, y: 884, w: 380, h: 90, zIndex: 2 }, {
+    text(`soup-${index}-price`, { x: x + 36, y: 886, w: 380, h: 90, zIndex: 2 }, {
       role: "price",
       binding: itemBinding("soups", index, "price"),
-      color: brandTokens.red,
-      fontSizePx: 64,
-      fontWeight: 900,
+      color: brandTokens.ink,
+      fontSizePx: 60,
+      fontWeight: 700,
       maxLines: 1,
       group
     }),
-    text(`soup-${index}-allergens`, { x: x + 428, y: 900, w: 340, h: 64, zIndex: 2 }, {
+    text(`soup-${index}-allergens`, { x: x + 424, y: 906, w: 340, h: 64, zIndex: 2 }, {
       role: "note",
       binding: itemBinding("soups", index, "allergens"),
+      color: brandTokens.red,
       align: "right",
-      fontSizePx: 32,
+      fontSizePx: 34,
+      fontStyle: "italic",
       group
     })
   ];
@@ -356,59 +374,77 @@ function mainRow(index: number): Array<TextLayerV2 | ImageLayerV2> {
     text(`main-${index}-name`, { x: 312, y: y + 4, w: 1080, h: 144, zIndex: 2 }, {
       binding: itemBinding("mains", index, "name"),
       fontSizePx: 44,
-      fontWeight: 850,
-      lineHeight: 1.08,
+      fontWeight: 700,
+      lineHeight: 1.1,
       maxLines: 2,
       group
     }),
-    text(`main-${index}-allergens`, { x: 1400, y: y + 96, w: 240, h: 52, zIndex: 2 }, {
+    text(`main-${index}-allergens`, { x: 1400, y: y + 98, w: 240, h: 52, zIndex: 2 }, {
       role: "note",
       binding: itemBinding("mains", index, "allergens"),
+      color: brandTokens.red,
       align: "right",
-      fontSizePx: 30,
+      fontSizePx: 32,
+      fontStyle: "italic",
       group
     }),
     text(`main-${index}-price`, { x: 1420, y: y + 8, w: 372, h: 84, zIndex: 2 }, {
       role: "price",
       binding: itemBinding("mains", index, "price"),
-      color: brandTokens.red,
+      color: brandTokens.ink,
       align: "right",
-      fontSizePx: 56,
-      fontWeight: 900,
+      fontSizePx: 54,
+      fontWeight: 700,
       maxLines: 1,
       group
     })
   ];
 }
 
-function buffetRow(index: number): TextLayerV2[] {
+function buffetRow(index: number): Array<TextLayerV2 | ShapeLayerV2> {
   const y = 200 + index * 112;
   const group = `buffet-${index}`;
-  return [
-    text(`buffet-${index}-name`, { x: 128, y, w: 1050, h: 104, zIndex: 2 }, {
+  const layers: Array<TextLayerV2 | ShapeLayerV2> = [
+    text(`buffet-${index}-name`, { x: 168, y: y + 20, w: 1010, h: 72, zIndex: 3 }, {
       binding: itemBinding("buffet", index, "name"),
-      fontSizePx: 48,
-      fontWeight: 850,
+      fontSizePx: 46,
+      fontWeight: 700,
       maxLines: 1,
       group
     }),
-    text(`buffet-${index}-allergens`, { x: 1200, y: y + 26, w: 240, h: 56, zIndex: 2 }, {
+    text(`buffet-${index}-allergens`, { x: 1200, y: y + 34, w: 240, h: 56, zIndex: 3 }, {
       role: "note",
       binding: itemBinding("buffet", index, "allergens"),
-      fontSizePx: 30,
+      color: brandTokens.red,
+      fontSizePx: 32,
+      fontStyle: "italic",
       group
     }),
-    text(`buffet-${index}-price`, { x: 1460, y, w: 332, h: 104, zIndex: 2 }, {
+    text(`buffet-${index}-price`, { x: 1420, y: y + 20, w: 332, h: 72, zIndex: 3 }, {
       role: "price",
       binding: itemBinding("buffet", index, "price"),
-      color: brandTokens.red,
+      color: brandTokens.ink,
       align: "right",
-      fontSizePx: 48,
-      fontWeight: 900,
+      fontSizePx: 46,
+      fontWeight: 700,
       maxLines: 1,
       group
     })
   ];
+
+  // Střídavé lososové pruhy jako zvýrazněné řádky v tištěném lístku.
+  if (index % 2 === 0) {
+    layers.unshift(
+      shape(`buffet-${index}-bar`, { x: 128, y, w: 1664, h: 104, zIndex: 1 }, {
+        fill: brandTokens.salmon,
+        opacity: 0.45,
+        cornerRadius: 12,
+        group
+      })
+    );
+  }
+
+  return layers;
 }
 
 function specialCard(index: number): Array<TextLayerV2 | ImageLayerV2 | ShapeLayerV2> {
@@ -416,7 +452,8 @@ function specialCard(index: number): Array<TextLayerV2 | ImageLayerV2 | ShapeLay
   const group = `special-${index}`;
   return [
     shape(`special-${index}-card`, { x, y: 240, w: 522, h: 760, zIndex: 1 }, {
-      fill: brandTokens.card,
+      fill: brandTokens.salmon,
+      opacity: 0.5,
       cornerRadius: 24,
       group
     }),
@@ -425,25 +462,28 @@ function specialCard(index: number): Array<TextLayerV2 | ImageLayerV2 | ShapeLay
       cornerRadius: 24,
       group
     }),
-    text(`special-${index}-name`, { x: x + 24, y: 584, w: 474, h: 160, zIndex: 2 }, {
+    text(`special-${index}-name`, { x: x + 28, y: 588, w: 466, h: 170, zIndex: 2 }, {
       binding: itemBinding("special", index, "name"),
-      fontSizePx: 44,
-      fontWeight: 850,
+      fontSizePx: 42,
+      fontWeight: 700,
+      lineHeight: 1.14,
       maxLines: 3,
       group
     }),
-    text(`special-${index}-allergens`, { x: x + 24, y: 764, w: 474, h: 60, zIndex: 2 }, {
+    text(`special-${index}-allergens`, { x: x + 28, y: 774, w: 466, h: 60, zIndex: 2 }, {
       role: "note",
       binding: itemBinding("special", index, "allergens"),
-      fontSizePx: 30,
+      color: brandTokens.red,
+      fontSizePx: 32,
+      fontStyle: "italic",
       group
     }),
-    text(`special-${index}-price`, { x: x + 24, y: 856, w: 474, h: 90, zIndex: 2 }, {
+    text(`special-${index}-price`, { x: x + 28, y: 856, w: 466, h: 90, zIndex: 2 }, {
       role: "price",
       binding: itemBinding("special", index, "price"),
-      color: brandTokens.red,
+      color: brandTokens.ink,
       fontSizePx: 54,
-      fontWeight: 900,
+      fontWeight: 700,
       maxLines: 1,
       group
     })
@@ -471,7 +511,7 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
         color: brandTokens.white,
         align: "center",
         fontSizePx: 120,
-        fontWeight: 900,
+        fontWeight: 700,
         lineHeight: 1,
         maxLines: 1,
         uppercase: true,
@@ -483,7 +523,8 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
         color: brandTokens.white,
         align: "center",
         fontSizePx: 48,
-        fontWeight: 700,
+        fontWeight: 600,
+        fontStyle: "italic",
         maxLines: 1,
         locked: true
       })
@@ -503,12 +544,12 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
     templateKind: "soups_duo",
     canvas,
     safeArea,
-    backgroundColor: brandTokens.cream,
+    backgroundColor: brandTokens.paper,
     backgroundGradient: null,
     backgroundAssetId: null,
     durationFrames: 240,
     transition: "fade",
-    layers: [cornerLogo, headline("Polévky"), ...soupCard(0), ...soupCard(1)],
+    layers: [cornerLogo, ...headlinePill("Polévky"), ...soupCard(0), ...soupCard(1)],
     validationRules: {
       ...dailyLoopRules,
       maxItemsPerSlide: 2,
@@ -523,14 +564,14 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
     templateKind: "mains_grid",
     canvas,
     safeArea,
-    backgroundColor: brandTokens.cream,
+    backgroundColor: brandTokens.paper,
     backgroundGradient: null,
     backgroundAssetId: null,
     durationFrames: 420,
     transition: "fade",
     layers: [
       cornerLogo,
-      headline("Hlavní jídla"),
+      ...headlinePill("Hlavní jídla", 640),
       ...mainRow(0),
       ...mainRow(1),
       ...mainRow(2),
@@ -551,7 +592,7 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
     templateKind: "pizza_day",
     canvas,
     safeArea,
-    backgroundColor: brandTokens.cream,
+    backgroundColor: brandTokens.paper,
     backgroundGradient: null,
     backgroundAssetId: null,
     durationFrames: 210,
@@ -562,31 +603,37 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
         binding: itemBinding("pizza", 0, "photo"),
         cornerRadius: 24
       }),
-      text("pizza-kicker", { x: 128, y: 240, w: 820, h: 90, zIndex: 2 }, {
+      shape("pizza-kicker-pill", { x: 128, y: 236, w: 460, h: 96, zIndex: 2 }, {
+        fill: brandTokens.red,
+        cornerRadius: 999
+      }),
+      text("pizza-kicker", { x: 128, y: 258, w: 460, h: 58, zIndex: 3 }, {
         role: "subheadline",
         text: "PIZZA DNE",
-        color: brandTokens.red,
-        fontSizePx: 72,
-        fontWeight: 900,
+        color: "#ffffff",
+        align: "center",
+        fontSizePx: 48,
+        fontWeight: 700,
         lineHeight: 1,
         maxLines: 1,
         uppercase: true
       }),
-      text("pizza-name", { x: 128, y: 350, w: 820, h: 270, zIndex: 2 }, {
+      text("pizza-name", { x: 128, y: 380, w: 820, h: 270, zIndex: 2 }, {
         role: "headline",
         binding: itemBinding("pizza", 0, "name"),
-        fontSizePx: 84,
-        fontWeight: 900,
-        lineHeight: 1.02,
+        fontSizePx: 82,
+        fontWeight: 700,
+        lineHeight: 1.05,
         maxLines: 3
       }),
-      text("pizza-description", { x: 128, y: 630, w: 820, h: 130, zIndex: 2 }, {
+      text("pizza-description", { x: 128, y: 650, w: 820, h: 130, zIndex: 2 }, {
         role: "note",
         binding: itemBinding("pizza", 0, "description"),
-        color: "#4a443f",
+        color: brandTokens.red,
         fontSizePx: 40,
-        fontWeight: 650,
-        lineHeight: 1.18,
+        fontWeight: 600,
+        fontStyle: "italic",
+        lineHeight: 1.2,
         maxLines: 3
       }),
       shape("pizza-price-plate", { x: 128, y: 790, w: 360, h: 150, zIndex: 2 }, {
@@ -598,15 +645,17 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
         binding: itemBinding("pizza", 0, "price"),
         color: brandTokens.white,
         align: "center",
-        fontSizePx: 88,
-        fontWeight: 900,
+        fontSizePx: 84,
+        fontWeight: 700,
         lineHeight: 1,
         maxLines: 1
       }),
       text("pizza-allergens", { x: 128, y: 956, w: 640, h: 52, zIndex: 2 }, {
         role: "note",
         binding: itemBinding("pizza", 0, "allergens"),
-        fontSizePx: 32
+        color: brandTokens.red,
+        fontSizePx: 34,
+        fontStyle: "italic"
       })
     ],
     validationRules: {
@@ -623,14 +672,14 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
     templateKind: "hot_buffet",
     canvas,
     safeArea,
-    backgroundColor: brandTokens.cream,
+    backgroundColor: brandTokens.paper,
     backgroundGradient: null,
     backgroundAssetId: null,
     durationFrames: 300,
     transition: "fade",
     layers: [
       cornerLogo,
-      headline("Teplý bufet"),
+      ...headlinePill("Teplý bufet", 620),
       ...buffetRow(0),
       ...buffetRow(1),
       ...buffetRow(2),
@@ -654,14 +703,14 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
     templateKind: "special",
     canvas,
     safeArea,
-    backgroundColor: brandTokens.cream,
+    backgroundColor: brandTokens.paper,
     backgroundGradient: null,
     backgroundAssetId: null,
     durationFrames: 240,
     transition: "fade",
     layers: [
       cornerLogo,
-      headline("Dnes navíc"),
+      ...headlinePill("Dnes navíc", 600),
       ...specialCard(0),
       ...specialCard(1),
       ...specialCard(2)

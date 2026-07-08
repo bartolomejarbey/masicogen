@@ -1143,6 +1143,8 @@ function DishPhotoModal({ dishName, canteenId, onClose, onPick }: DishPhotoModal
   const [query, setQuery] = useState(dishName);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [cutoutBackground, setCutoutBackground] = useState(false);
+  const [uploadStep, setUploadStep] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -1170,6 +1172,7 @@ function DishPhotoModal({ dishName, canteenId, onClose, onPick }: DishPhotoModal
   async function uploadPhoto(file: File) {
     setUploading(true);
     setUploadError(null);
+    setUploadStep("Nahrávám fotku…");
 
     try {
       const intentResponse = await fetch("/api/uploads/intent", {
@@ -1199,6 +1202,36 @@ function DishPhotoModal({ dishName, canteenId, onClose, onPick }: DishPhotoModal
         throw new Error(`Nahrání fotky selhalo: ${upload.error.message}`);
       }
 
+      // Volitelné vystřižení pozadí: z fotky zůstane jen jídlo.
+      if (cutoutBackground) {
+        setUploadStep("Vystřihuji pozadí — chvilku to potrvá…");
+        const cutoutResponse = await fetch("/api/dish-photos/cutout", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            path: intent.path,
+            dishName,
+            canteenId,
+            mimeType: file.type
+          })
+        });
+        const cutout = (await cutoutResponse.json().catch(() => null)) as
+          | { ok?: boolean; assetId?: string; signedUrl?: string | null; error?: string }
+          | null;
+
+        if (!cutoutResponse.ok || !cutout?.ok || !cutout.assetId) {
+          throw new Error(cutout?.error ?? "Vystřižení pozadí selhalo.");
+        }
+
+        onPick({
+          assetId: cutout.assetId,
+          url: cutout.signedUrl ?? null,
+          focalPoint: { x: 0.5, y: 0.5 }
+        });
+        return;
+      }
+
+      setUploadStep("Ukládám do knihovny…");
       const registerResponse = await fetch("/api/dish-photos", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -1226,6 +1259,7 @@ function DishPhotoModal({ dishName, canteenId, onClose, onPick }: DishPhotoModal
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Nahrání selhalo.");
       setUploading(false);
+      setUploadStep(null);
     }
   }
 
@@ -1280,6 +1314,23 @@ function DishPhotoModal({ dishName, canteenId, onClose, onPick }: DishPhotoModal
             Bez fotky
           </button>
         </div>
+
+        <label className="photo-cutout-toggle">
+          <input
+            checked={cutoutBackground}
+            onChange={(event) => setCutoutBackground(event.target.checked)}
+            type="checkbox"
+          />
+          <span>
+            Po nahrání automaticky vystřihnout pozadí — na slidu zůstane jen jídlo
+          </span>
+        </label>
+
+        {uploadStep && uploading ? (
+          <p className="photo-grid-note" role="status">
+            <Loader2 className="spin" size={20} aria-hidden="true" /> {uploadStep}
+          </p>
+        ) : null}
 
         {uploadError ? (
           <div className="launch-error" role="alert">

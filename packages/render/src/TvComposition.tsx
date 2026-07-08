@@ -7,6 +7,7 @@ import {
   getAllergenLabel,
   isTemplateManifestV2,
   resolveSectionByKey,
+  tvFontFamily,
   type DeckManifest,
   type ImageLayerV2,
   type LayerFrame,
@@ -350,8 +351,7 @@ function LayerSlide({ deck, menu, slide, manifest, showSafeArea }: LayerSlidePro
         overflow: "hidden",
         background: manifest.backgroundGradient ?? manifest.backgroundColor,
         color: brandTokens.ink,
-        fontFamily:
-          "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+        fontFamily: tvFontFamily
       }}
     >
       {backgroundUrl ? (
@@ -671,48 +671,6 @@ function TextLayer({
   slide: Slide;
   frame: CSSProperties;
 }) {
-  if (layer.binding?.source === "item" && layer.binding.field === "allergens") {
-    if (!item || item.allergens.length === 0) {
-      return null;
-    }
-
-    return (
-      <div
-        style={{
-          ...frame,
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "8px",
-          alignItems: "center",
-          justifyContent: layer.align === "right" ? "flex-end" : layer.align === "center" ? "center" : "flex-start"
-        }}
-      >
-        {item.allergens.map((code) => (
-          <span
-            key={code}
-            title={getAllergenLabel(code)}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minWidth: `${Math.round(layer.fontSizePx * 1.55)}px`,
-              height: `${Math.round(layer.fontSizePx * 1.55)}px`,
-              borderRadius: "999px",
-              background: brandTokens.card,
-              border: `2px solid ${brandTokens.border}`,
-              color: brandTokens.ink,
-              fontSize: `${layer.fontSizePx}px`,
-              fontWeight: 800,
-              lineHeight: 1
-            }}
-          >
-            {code}
-          </span>
-        ))}
-      </div>
-    );
-  }
-
   const content = resolveTextContent(layer, item, menu, slide);
   if (!content) {
     return null;
@@ -730,6 +688,7 @@ function TextLayer({
         textAlign: layer.align,
         fontSize: `${layer.fontSizePx}px`,
         fontWeight: layer.fontWeight,
+        fontStyle: layer.fontStyle,
         lineHeight: layer.lineHeight,
         textTransform: layer.uppercase ? "uppercase" : undefined
       }}
@@ -770,6 +729,9 @@ function resolveTextContent(
       return item.description;
     case "price":
       return formatCzk(item.prices[0]?.amount ?? null);
+    case "allergens":
+      // Alergeny jako čísla červenou kurzívou — styl tištěného jídelního lístku.
+      return item.allergens.length > 0 ? item.allergens.join(", ") : null;
     default:
       return null;
   }

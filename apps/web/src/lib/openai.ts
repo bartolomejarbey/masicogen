@@ -106,6 +106,112 @@ export async function generateBackgroundImage(input: {
   }>;
 }
 
+/**
+ * Provizorní fotka jídla pro TV smyčku — jednotný styl, dokud personál
+ * nenahraje vlastní fotku.
+ */
+export async function generateDishPhoto(input: {
+  dishName: string;
+  description?: string | null;
+  quality?: "low" | "medium" | "high";
+}) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is missing.");
+  }
+
+  const prompt = [
+    `Professional food photography of the Czech canteen dish: "${input.dishName}".`,
+    input.description ? `Details: ${input.description}.` : "",
+    "Served on a simple white ceramic plate, shot from a 45-degree angle,",
+    "warm appetizing daylight, shallow depth of field, neutral dark slate table,",
+    "authentic honest Czech cafeteria portion, photorealistic.",
+    "No text, no numbers, no people, no hands, no logos, no cutlery brands."
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const response = await fetch(`${OPENAI_BASE_URL}/images/generations`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-2",
+      prompt,
+      size: "1024x1024",
+      quality: input.quality ?? "medium",
+      output_format: "png"
+    })
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `OpenAI dish photo failed: ${response.status}${detail ? ` ${detail.slice(0, 500)}` : ""}`
+    );
+  }
+
+  return response.json() as Promise<{
+    data?: Array<{ b64_json?: string; url?: string }>;
+  }>;
+}
+
+/**
+ * Vystřižení pozadí nahrané fotky: zůstane jen jídlo (talíř) na průhledném
+ * pozadí. Jídlo samotné se nesmí nijak měnit.
+ */
+export async function removeDishPhotoBackground(input: {
+  image: Buffer;
+  mimeType: string;
+  fileName?: string;
+}) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is missing.");
+  }
+
+  const form = new FormData();
+  form.append("model", process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-2");
+  form.append(
+    "prompt",
+    [
+      "Remove the background completely and keep ONLY the plated food from the photo,",
+      "perfectly preserved and unchanged (same dish, same plate, same angle, same lighting).",
+      "Output the isolated dish on a fully transparent background.",
+      "Do not add anything, do not restyle the food."
+    ].join(" ")
+  );
+  form.append("background", "transparent");
+  form.append("size", "1024x1024");
+  form.append("output_format", "png");
+  form.append(
+    "image",
+    new Blob([new Uint8Array(input.image)], { type: input.mimeType }),
+    input.fileName ?? "dish.png"
+  );
+
+  const response = await fetch(`${OPENAI_BASE_URL}/images/edits`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`
+    },
+    body: form
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `OpenAI background removal failed: ${response.status}${detail ? ` ${detail.slice(0, 500)}` : ""}`
+    );
+  }
+
+  return response.json() as Promise<{
+    data?: Array<{ b64_json?: string }>;
+  }>;
+}
+
 export function getOpenAIImageDimensions() {
   const [width, height] = getOpenAIImageSize().split("x").map((part) => Number.parseInt(part, 10));
 

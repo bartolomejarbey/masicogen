@@ -11,9 +11,15 @@ export const brandTokens = {
   ink: "#191513",
   cream: "#f6f3ee",
   card: "#fffdf9",
+  paper: "#ffffff",
+  salmon: "#f6a9a2",
   border: "#e2d9cf",
   white: "#fffaf0"
 } as const;
+
+/** Serif podle tištěného jídelního lístku MASI-CO (Lora se načítá ve web appce). */
+export const tvFontFamily =
+  'var(--font-lora, "Lora"), "Lora", Georgia, "Times New Roman", serif';
 
 export function isTemplateManifestV2(
   manifest: AnyTemplateManifest
@@ -71,6 +77,7 @@ function legacyLayersFor(manifest: TemplateManifest): TemplateLayerV2[] {
       align: "left",
       fontSizePx: 92,
       fontWeight: 900,
+      fontStyle: "normal",
       lineHeight: 1,
       maxLines: 1,
       overflow: "truncate",
@@ -95,6 +102,7 @@ function legacyLayersFor(manifest: TemplateManifest): TemplateLayerV2[] {
         align: "left",
         fontSizePx: 52,
         fontWeight: 850,
+        fontStyle: "normal",
         lineHeight: 1.08,
         maxLines: 2,
         overflow: "truncate",
@@ -113,6 +121,7 @@ function legacyLayersFor(manifest: TemplateManifest): TemplateLayerV2[] {
         align: "right",
         fontSizePx: 54,
         fontWeight: 900,
+        fontStyle: "normal",
         lineHeight: 1,
         maxLines: 1,
         overflow: "truncate",

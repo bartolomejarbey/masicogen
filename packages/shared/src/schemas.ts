@@ -245,6 +245,7 @@ export const textLayerV2Schema = z.object({
   align: z.enum(["left", "center", "right"]).default("left"),
   fontSizePx: z.number().int().min(30),
   fontWeight: z.number().int().min(400).max(900).default(700),
+  fontStyle: z.enum(["normal", "italic"]).default("normal"),
   lineHeight: z.number().positive().default(1.1),
   maxLines: z.number().int().positive().default(2),
   overflow: z.enum(["truncate", "block"]).default("truncate"),

@@ -3490,3 +3490,20 @@ a {
   gap: 12px;
   justify-items: start;
 }
+
+.photo-cutout-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.photo-cutout-toggle input {
+  width: 24px;
+  height: 24px;
+  accent-color: var(--red);
+}
