@@ -490,43 +490,136 @@ function specialCard(index: number): Array<TextLayerV2 | ImageLayerV2 | ShapeLay
   ];
 }
 
+/** Řádek polévky na přehledovém slidu — červená kurzíva jako v tištěném lístku. */
+function overviewSoupRow(index: number): TextLayerV2[] {
+  const y = 262 + index * 88;
+  const group = `overview-soup-${index}`;
+  return [
+    text(`overview-soup-${index}-name`, { x: 168, y, w: 970, h: 76, zIndex: 2 }, {
+      binding: itemBinding("soups", index, "name"),
+      color: brandTokens.red,
+      fontSizePx: 42,
+      fontWeight: 600,
+      fontStyle: "italic",
+      lineHeight: 1.05,
+      maxLines: 1,
+      group
+    }),
+    text(`overview-soup-${index}-allergens`, { x: 1160, y: y + 12, w: 250, h: 44, zIndex: 2 }, {
+      role: "note",
+      binding: itemBinding("soups", index, "allergens"),
+      color: brandTokens.red,
+      align: "right",
+      fontSizePx: 30,
+      fontStyle: "italic",
+      maxLines: 1,
+      group
+    }),
+    text(`overview-soup-${index}-price`, { x: 1440, y, w: 352, h: 76, zIndex: 2 }, {
+      role: "price",
+      binding: itemBinding("soups", index, "price"),
+      color: brandTokens.ink,
+      align: "right",
+      fontSizePx: 42,
+      fontWeight: 700,
+      maxLines: 1,
+      group
+    })
+  ];
+}
+
+/** Řádek hlavního jídla na přehledovém slidu. */
+function overviewMainRow(index: number): TextLayerV2[] {
+  const y = 456 + index * 94;
+  const group = `overview-main-${index}`;
+  return [
+    text(`overview-main-${index}-name`, { x: 168, y, w: 970, h: 84, zIndex: 2 }, {
+      binding: itemBinding("mains", index, "name"),
+      fontSizePx: 38,
+      fontWeight: 700,
+      lineHeight: 1.08,
+      maxLines: 2,
+      group
+    }),
+    text(`overview-main-${index}-allergens`, { x: 1160, y: y + 10, w: 250, h: 44, zIndex: 2 }, {
+      role: "note",
+      binding: itemBinding("mains", index, "allergens"),
+      color: brandTokens.red,
+      align: "right",
+      fontSizePx: 30,
+      fontStyle: "italic",
+      maxLines: 1,
+      group
+    }),
+    text(`overview-main-${index}-price`, { x: 1440, y, w: 352, h: 76, zIndex: 2 }, {
+      role: "price",
+      binding: itemBinding("mains", index, "price"),
+      color: brandTokens.ink,
+      align: "right",
+      fontSizePx: 42,
+      fontWeight: 700,
+      maxLines: 1,
+      group
+    })
+  ];
+}
+
 export const dailyLoopTemplates: TemplateManifestV2[] = [
   {
     schemaVersion: 2,
     id: "masico-intro",
-    name: "Denní menu — úvod",
+    name: "Denní menu — přehled",
     templateKind: "brand_intro",
     canvas,
     safeArea,
-    backgroundColor: brandTokens.red,
-    backgroundGradient: `linear-gradient(160deg, ${brandTokens.red} 0%, ${brandTokens.redDark} 100%)`,
+    backgroundColor: brandTokens.paper,
+    backgroundGradient: null,
     backgroundAssetId: null,
     durationFrames: 120,
     transition: "fade",
     layers: [
-      logo("intro-logo", { x: 660, y: 280, w: 600, h: 220, zIndex: 2 }, "white"),
-      text("intro-title", { x: 260, y: 560, w: 1400, h: 160, zIndex: 2 }, {
-        role: "headline",
-        text: "DENNÍ MENU",
-        color: brandTokens.white,
-        align: "center",
-        fontSizePx: 120,
-        fontWeight: 700,
-        lineHeight: 1,
-        maxLines: 1,
-        uppercase: true,
-        locked: true
-      }),
-      text("intro-date", { x: 260, y: 750, w: 1400, h: 70, zIndex: 2 }, {
+      cornerLogo,
+      ...headlinePill("Denní menu", 620),
+      text("intro-date", { x: 260, y: 198, w: 1400, h: 50, zIndex: 2 }, {
         role: "subheadline",
         binding: { source: "menu", field: "date" },
-        color: brandTokens.white,
+        color: brandTokens.red,
         align: "center",
-        fontSizePx: 48,
+        fontSizePx: 36,
         fontWeight: 600,
         fontStyle: "italic",
+        maxLines: 1
+      }),
+      ...overviewSoupRow(0),
+      ...overviewSoupRow(1),
+      ...overviewMainRow(0),
+      ...overviewMainRow(1),
+      ...overviewMainRow(2),
+      ...overviewMainRow(3),
+      ...overviewMainRow(4),
+      // Výhodné menu dne — lososový pruh jako v tištěném lístku.
+      shape("overview-combo-bar", { x: 128, y: 940, w: 1664, h: 64, zIndex: 1 }, {
+        fill: brandTokens.salmon,
+        opacity: 0.6,
+        cornerRadius: 12,
+        group: "overview-combo-0"
+      }),
+      text("overview-combo-name", { x: 168, y: 952, w: 1230, h: 44, zIndex: 2 }, {
+        binding: itemBinding("special", 0, "name"),
+        fontSizePx: 34,
+        fontWeight: 700,
         maxLines: 1,
-        locked: true
+        group: "overview-combo-0"
+      }),
+      text("overview-combo-price", { x: 1440, y: 952, w: 352, h: 44, zIndex: 2 }, {
+        role: "price",
+        binding: itemBinding("special", 0, "price"),
+        color: brandTokens.ink,
+        align: "right",
+        fontSizePx: 34,
+        fontWeight: 700,
+        maxLines: 1,
+        group: "overview-combo-0"
       })
     ],
     validationRules: {

@@ -730,8 +730,8 @@ function resolveTextContent(
     case "price":
       return formatCzk(item.prices[0]?.amount ?? null);
     case "allergens":
-      // Alergeny jako čísla červenou kurzívou — styl tištěného jídelního lístku.
-      return item.allergens.length > 0 ? item.allergens.join(", ") : null;
+      // Alergeny jako čísla červenou kurzívou bez mezer — styl tištěného lístku.
+      return item.allergens.length > 0 ? item.allergens.join(",") : null;
     default:
       return null;
   }
