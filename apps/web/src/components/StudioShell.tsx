@@ -1,5 +1,6 @@
 import {
   Bot,
+  CalendarDays,
   CheckSquare,
   Home,
   MonitorPlay,
@@ -12,13 +13,14 @@ import { getStudioAccessState, type StudioAccessRole, type StudioAccessState } f
 
 const navItems = [
   { label: "Dnes", icon: Home, section: "today", href: "/" },
+  { label: "Týden", icon: CalendarDays, section: "week", href: "/tyden" },
   { label: "Kontrola vzhledu", icon: CheckSquare, section: "audit", href: "/audit" }
 ];
 
 const adminNavItems = [
   { label: "Šablony", icon: Palette, section: "templates", href: "/sablony" },
   { label: "Stav systému", icon: ShieldAlert, section: "readiness", href: "/readiness" },
-  { label: "Nastavení", icon: Settings, href: "/#nastaveni" }
+  { label: "Nastavení", icon: Settings, section: "settings", href: "/nastaveni" }
 ];
 
 export async function StudioShell({
@@ -26,7 +28,7 @@ export async function StudioShell({
   access: providedAccess,
   children
 }: {
-  activeSection?: "today" | "audit" | "readiness" | "templates";
+  activeSection?: "today" | "week" | "audit" | "readiness" | "templates" | "settings";
   access?: StudioAccessState;
   children: React.ReactNode;
 }) {

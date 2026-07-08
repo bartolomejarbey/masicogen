@@ -26,6 +26,7 @@ export type ProductionDashboardSnapshot = {
   canteens: ProductionCanteen[];
   screens: ProductionScreen[];
   upcomingMenus: UpcomingMenu[];
+  autopilot: AutopilotStatus;
   counts: {
     locations: number;
     screens: number;
@@ -35,6 +36,25 @@ export type ProductionDashboardSnapshot = {
     renderJobsRunning: number;
   };
   dataError: string | null;
+};
+
+export type MorningCheckDetail = {
+  hasDeckToday?: boolean;
+  screensOnline?: number;
+  screensTotal?: number;
+  failedPhotoJobs?: number;
+  failedRenderJobs?: number;
+  pendingReview?: boolean;
+};
+
+export type AutopilotStatus = {
+  lastMorningCheck: {
+    status: string;
+    detail: MorningCheckDetail;
+    startedAt: string;
+  } | null;
+  /** Dnešní a budoucí dny, kde nejnovější verze menu je autopilotí draft. */
+  pendingReviewDates: string[];
 };
 
 export type ProductionCanteen = {
@@ -87,6 +107,22 @@ export type UpcomingMenu = {
   locationId: string;
   date: string;
   status: string;
+  /** Nejnovější verze menu je draft od autopilota — čeká na potvrzení. */
+  reviewPending: boolean;
+};
+
+export type MenuVersionRow = {
+  id: string;
+  menu_id: string;
+  status: string;
+  extraction_model: string | null;
+  created_at: string;
+};
+
+export type AutomationRunRow = {
+  status: string;
+  detail: unknown;
+  started_at: string;
 };
 
 type CanteenRow = {
@@ -119,7 +155,8 @@ export async function getProductionDashboardSnapshot(
     screensResult,
     menusResult,
     exportsResult,
-    renderJobsResult
+    renderJobsResult,
+    morningCheckResult
   ] =
     await Promise.all([
       supabase
@@ -158,8 +195,34 @@ export async function getProductionDashboardSnapshot(
         .select("id, status")
         .eq("org_id", orgId)
         .in("status", ["queued", "leased", "running", "retrying"])
-        .returns<RenderJobRow[]>()
+        .returns<RenderJobRow[]>(),
+      supabase
+        .from("automation_runs")
+        .select("status, detail, started_at")
+        .eq("org_id", orgId)
+        .eq("run_type", "morning_check")
+        // Jen dnešní kontrola — včerejší „chybí menu" by na homepage strašilo
+        // celý den i po nápravě.
+        .gte("started_at", `${todayIso}T00:00:00Z`)
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .returns<AutomationRunRow[]>()
     ]);
+
+  // Verze menu k nadcházejícím dnům — přes menus nelze embedovat (dva FK mezi
+  // menus a menu_versions), proto druhý dotaz nad menu_id. Autopilot data jsou
+  // jen informativní: jejich chyba nesmí schovat denní spuštění, do dataError
+  // se proto nepropisuje.
+  const upcomingMenuIds = (menusResult.data ?? []).map((menu) => menu.id);
+  const menuVersionsResult =
+    upcomingMenuIds.length > 0
+      ? await supabase
+          .from("menu_versions")
+          .select("id, menu_id, status, extraction_model, created_at")
+          .eq("org_id", orgId)
+          .in("menu_id", upcomingMenuIds)
+          .returns<MenuVersionRow[]>()
+      : { data: [] as MenuVersionRow[], error: null };
 
   const dataError = [
     orgResult.error ? `organizations: ${orgResult.error.message}` : null,
@@ -181,6 +244,8 @@ export async function getProductionDashboardSnapshot(
     canteens: canteensResult.data ?? [],
     screens: screensResult.data ?? [],
     menus: menusResult.data ?? [],
+    menuVersions: menuVersionsResult.data ?? [],
+    lastMorningCheck: morningCheckResult.data?.[0] ?? null,
     exportCount: exportsResult.data?.length ?? 0,
     runningRenderJobCount: renderJobsResult.data?.length ?? 0,
     dataError: dataError || null
@@ -195,10 +260,37 @@ export function summarizeProductionDashboard(input: {
   canteens: CanteenRow[];
   screens: ScreenRow[];
   menus: MenuRow[];
+  menuVersions: MenuVersionRow[];
+  lastMorningCheck: AutomationRunRow | null;
   exportCount: number;
   runningRenderJobCount: number;
   dataError: string | null;
 }): ProductionDashboardSnapshot {
+  // Nejnovější verze per menu — menus.current_version_id se nastavuje až při
+  // approve, drafty autopilota jsou vidět jen přes menu_versions.
+  const latestVersionByMenu = new Map<string, MenuVersionRow>();
+  for (const version of input.menuVersions) {
+    const current = latestVersionByMenu.get(version.menu_id);
+    if (!current || version.created_at > current.created_at) {
+      latestVersionByMenu.set(version.menu_id, version);
+    }
+  }
+
+  const isReviewPending = (menu: MenuRow) => {
+    const latest = latestVersionByMenu.get(menu.id);
+    return Boolean(
+      latest && latest.status === "draft" && latest.extraction_model === "openai-vision-week"
+    );
+  };
+
+  const pendingReviewDates = [
+    ...new Set(
+      input.menus
+        .filter((menu) => menu.menu_date >= input.todayIso && isReviewPending(menu))
+        .map((menu) => menu.menu_date)
+    )
+  ].sort();
+
   const locationStatuses = input.locations.map((location) => {
     const screens = input.screens.filter((screen) => screen.location_id === location.id);
     const menus = input.menus.filter((menu) => menu.location_id === location.id);
@@ -249,8 +341,19 @@ export function summarizeProductionDashboard(input: {
       canteenId: menu.canteen_id,
       locationId: menu.location_id,
       date: menu.menu_date,
-      status: menu.status
+      status: menu.status,
+      reviewPending: isReviewPending(menu)
     })),
+    autopilot: {
+      lastMorningCheck: input.lastMorningCheck
+        ? {
+            status: input.lastMorningCheck.status,
+            detail: toMorningCheckDetail(input.lastMorningCheck.detail),
+            startedAt: input.lastMorningCheck.started_at
+          }
+        : null,
+      pendingReviewDates
+    },
     counts: {
       locations: input.locations.length,
       screens: input.screens.length,
@@ -261,6 +364,12 @@ export function summarizeProductionDashboard(input: {
     },
     dataError: input.dataError
   };
+}
+
+function toMorningCheckDetail(detail: unknown): MorningCheckDetail {
+  return detail && typeof detail === "object" && !Array.isArray(detail)
+    ? (detail as MorningCheckDetail)
+    : {};
 }
 
 function getLocationBlockingStatus(input: {

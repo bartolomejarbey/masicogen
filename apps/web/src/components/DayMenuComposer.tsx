@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   allergenCatalog,
+  auditDeck,
   buildDailyDeckManifest,
   dailyLoopSlides,
   dailyLoopTemplates,
@@ -34,6 +35,8 @@ import { StatusBadge } from "./StatusBadge";
 
 type FormSectionKey = "soups" | "mains" | "pizza" | "buffet" | "special";
 
+type PhotoSource = "upload" | "cutout" | "ai";
+
 type DraftItem = {
   key: string;
   name: string;
@@ -46,6 +49,7 @@ type DraftItem = {
   photoAssetId: string | null;
   photoUrl: string | null;
   photoFocalPoint: { x: number; y: number } | null;
+  photoSource: PhotoSource | null;
 };
 
 type LibraryPhoto = {
@@ -54,6 +58,7 @@ type LibraryPhoto = {
   dishName: string;
   focalPoint: { x: number; y: number };
   signedUrl: string | null;
+  source?: string;
 };
 
 type Suggestion = {
@@ -62,8 +67,13 @@ type Suggestion = {
   allergens: string[];
   photoAssetId: string | null;
   photoFocalPoint: { x: number; y: number } | null;
+  photoSource?: string | null;
   timesUsed: number;
 };
+
+function toPhotoSource(value: string | null | undefined): PhotoSource | null {
+  return value === "upload" || value === "cutout" || value === "ai" ? value : null;
+}
 
 const sectionMeta: Array<{
   key: FormSectionKey;
@@ -130,7 +140,7 @@ const sectionTitles: Record<FormSectionKey, string> = {
 };
 
 const slideLabels: Record<DailyLoopSlideKey, string> = {
-  intro: "Úvodní slide",
+  intro: "Přehled dne",
   soups: "Polévky",
   mains: "Hlavní jídla",
   pizza: "Pizza dne",
@@ -150,7 +160,8 @@ function emptyItem(key: string): DraftItem {
     allergensConfirmed: true,
     photoAssetId: null,
     photoUrl: null,
-    photoFocalPoint: null
+    photoFocalPoint: null,
+    photoSource: null
   };
 }
 
@@ -164,11 +175,14 @@ function emptySections(): Record<FormSectionKey, DraftItem[]> {
   return result;
 }
 
-function defaultDurations(): Record<DailyLoopSlideKey, number> {
+function defaultDurations(
+  overrides?: Partial<Record<DailyLoopSlideKey, number>>
+): Record<DailyLoopSlideKey, number> {
   const durations = {} as Record<DailyLoopSlideKey, number>;
   for (const slide of dailyLoopSlides) {
     const template = dailyLoopTemplates.find((candidate) => candidate.id === slide.templateId);
-    durations[slide.key] = template ? framesToSeconds(template.durationFrames) : 8;
+    durations[slide.key] =
+      overrides?.[slide.key] ?? (template ? framesToSeconds(template.durationFrames) : 8);
   }
   return durations;
 }
@@ -207,13 +221,20 @@ function sectionsFromMenu(menu: MenuExtractionResult): Record<FormSectionKey, Dr
         allergensConfirmed: true,
         photoAssetId: item.photoAssetId ?? null,
         photoUrl: null,
-        photoFocalPoint: item.photoFocalPoint ?? null
+        photoFocalPoint: item.photoFocalPoint ?? null,
+        photoSource: toPhotoSource(item.photoSource)
       };
     });
   }
 
   return sections;
 }
+
+type ComposerSettings = {
+  durationsSeconds: Partial<Record<DailyLoopSlideKey, number>>;
+  enabledSlides: Partial<Record<DailyLoopSlideKey, boolean>>;
+  footerLegendText: string;
+};
 
 type DayMenuComposerProps = {
   date: string;
@@ -222,6 +243,7 @@ type DayMenuComposerProps = {
   snapshot: ProductionDashboardSnapshot;
   initialMenu: MenuExtractionResult | null;
   initialStatus: string | null;
+  settings?: ComposerSettings;
 };
 
 export function DayMenuComposer({
@@ -230,12 +252,15 @@ export function DayMenuComposer({
   roleLabel,
   snapshot,
   initialMenu,
-  initialStatus
+  initialStatus,
+  settings
 }: DayMenuComposerProps) {
   const [sections, setSections] = useState<Record<FormSectionKey, DraftItem[]>>(() =>
     initialMenu ? sectionsFromMenu(initialMenu) : emptySections()
   );
-  const [durations, setDurations] = useState<Record<DailyLoopSlideKey, number>>(defaultDurations);
+  const [durations, setDurations] = useState<Record<DailyLoopSlideKey, number>>(() =>
+    defaultDurations(settings?.durationsSeconds)
+  );
   const [locationId, setLocationId] = useState(snapshot.locations[0]?.id ?? "");
   const canteens = useMemo(
     () => snapshot.canteens.filter((canteen) => canteen.locationId === locationId),
@@ -290,6 +315,58 @@ export function DayMenuComposer({
       localStorage.removeItem(draftKey);
     }
   }, [draftKey, initialMenu]);
+
+  // Po prefillu (uložený den / autopilot) mají položky photoAssetId, ale ne
+  // podepsanou URL — bez ní by miniatury i TV náhled ukazovaly placeholder.
+  const photoUrlsHydrated = useRef(false);
+  useEffect(() => {
+    if (photoUrlsHydrated.current) {
+      return;
+    }
+    photoUrlsHydrated.current = true;
+
+    const missingIds = new Set<string>();
+    for (const meta of sectionMeta) {
+      for (const item of sections[meta.key]) {
+        if (item.photoAssetId && !item.photoUrl) {
+          missingIds.add(item.photoAssetId);
+        }
+      }
+    }
+    if (missingIds.size === 0) {
+      return;
+    }
+
+    void Promise.all(
+      Array.from(missingIds).map(async (assetId) => {
+        try {
+          const response = await fetch(`/api/dish-photos?assetId=${assetId}`);
+          const body = (await response.json().catch(() => null)) as
+            | { photos?: LibraryPhoto[] }
+            | null;
+          return [assetId, body?.photos?.[0]?.signedUrl ?? null] as const;
+        } catch {
+          return [assetId, null] as const;
+        }
+      })
+    ).then((pairs) => {
+      const urls = new Map(pairs.filter(([, url]) => url));
+      if (urls.size === 0) {
+        return;
+      }
+      setSections((previous) => {
+        const next = {} as Record<FormSectionKey, DraftItem[]>;
+        for (const meta of sectionMeta) {
+          next[meta.key] = previous[meta.key].map((item) =>
+            item.photoAssetId && !item.photoUrl && urls.has(item.photoAssetId)
+              ? { ...item, photoUrl: urls.get(item.photoAssetId) ?? null }
+              : item
+          );
+        }
+        return next;
+      });
+    });
+  }, [sections]);
 
   // Průběžný autosave (debounce 500 ms).
   useEffect(() => {
@@ -404,10 +481,28 @@ export function DayMenuComposer({
 
   const previewDeck = useMemo(() => {
     const manifest = buildDailyDeckManifest(menu, {
-      slideDurationsSeconds: durations
+      slideDurationsSeconds: durations,
+      enabledSlides: settings?.enabledSlides,
+      footerLegendText: settings?.footerLegendText
     });
     return { ...manifest, assetUrls: photoUrls };
-  }, [durations, menu, photoUrls]);
+  }, [durations, menu, photoUrls, settings]);
+
+  // Živý audit náhledu: vizuální upozornění (přetečení textu, chybějící
+  // fotky…) — nikdy neblokují, jen radí. Blokující chyby hlídá validation níže.
+  const auditWarnings = useMemo(() => {
+    if (previewDeck.slides.length === 0) {
+      return [];
+    }
+
+    return auditDeck(previewDeck, menu)
+      .filter(
+        (issue) =>
+          issue.severity === "warning" &&
+          !["missing_price", "missing_allergens", "missing_required_slide"].includes(issue.code)
+      )
+      .map((issue) => issue.message);
+  }, [menu, previewDeck]);
 
   const includedSlides = previewDeck.slides.map((slide) => slide.id.replace("slide-", "") as DailyLoopSlideKey);
   const activeSlideId = includedSlides.includes(activeSlideKey)
@@ -724,6 +819,18 @@ export function DayMenuComposer({
               </ul>
             </div>
           )}
+          {validation.ready && auditWarnings.length > 0 ? (
+            <div className="day-audit-hints" role="note">
+              <ul>
+                {auditWarnings.slice(0, 2).map((hint) => (
+                  <li key={hint}>{hint}</li>
+                ))}
+                {auditWarnings.length > 2 ? (
+                  <li>… a {auditWarnings.length - 2} další doporučení</li>
+                ) : null}
+              </ul>
+            </div>
+          ) : null}
         </div>
         <div className="day-submit-actions">
           <button
@@ -799,7 +906,8 @@ export function DayMenuComposer({
             updateItem(photoPicker.sectionKey, photoPicker.index, {
               photoAssetId: photo?.assetId ?? null,
               photoUrl: photo?.url ?? null,
-              photoFocalPoint: photo?.focalPoint ?? null
+              photoFocalPoint: photo?.focalPoint ?? null,
+              photoSource: photo ? toPhotoSource(photo.source) : null
             });
             setPhotoPicker(null);
           }}
@@ -832,6 +940,7 @@ function toMenuItem(sectionKey: FormSectionKey, item: DraftItem, index: number):
     highlight: false,
     photoAssetId: item.photoAssetId,
     photoFocalPoint: item.photoFocalPoint ?? undefined,
+    photoSource: item.photoAssetId ? item.photoSource ?? undefined : undefined,
     sourceRefs: [],
     confidence: 1
   };
@@ -901,11 +1010,13 @@ function DishRow({
     setSuggestionsOpen(false);
 
     let photoUrl: string | null = null;
+    let photoSource: PhotoSource | null = toPhotoSource(suggestion.photoSource);
     if (suggestion.photoAssetId) {
       try {
         const response = await fetch(`/api/dish-photos?assetId=${suggestion.photoAssetId}`);
         const body = (await response.json().catch(() => null)) as { photos?: LibraryPhoto[] } | null;
         photoUrl = body?.photos?.[0]?.signedUrl ?? null;
+        photoSource = toPhotoSource(body?.photos?.[0]?.source) ?? photoSource;
       } catch {
         photoUrl = null;
       }
@@ -920,7 +1031,8 @@ function DishRow({
       allergensConfirmed: suggestion.allergens.length === 0,
       photoAssetId: suggestion.photoAssetId,
       photoUrl,
-      photoFocalPoint: suggestion.photoFocalPoint
+      photoFocalPoint: suggestion.photoFocalPoint,
+      photoSource: suggestion.photoAssetId ? photoSource : null
     });
   }
 
@@ -932,12 +1044,26 @@ function DishRow({
             className={`dish-photo-button ${item.photoUrl ? "has-photo" : ""}`}
             onClick={onOpenPhoto}
             disabled={!filled}
-            title={filled ? "Vybrat fotku jídla" : "Nejdřív napište název jídla"}
+            style={{ position: "relative" }}
+            title={
+              !filled
+                ? "Nejdřív napište název jídla"
+                : item.photoSource === "ai"
+                  ? "Ilustrační AI fotka — klepnutím nahradíte vlastní"
+                  : "Vybrat fotku jídla"
+            }
             type="button"
           >
             {item.photoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img alt="" src={item.photoUrl} />
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img alt="" src={item.photoUrl} />
+                {item.photoSource === "ai" ? (
+                  <span aria-label="Ilustrační AI fotka" style={aiCornerBadgeStyle}>
+                    AI
+                  </span>
+                ) : null}
+              </>
             ) : (
               <>
                 <Camera size={22} aria-hidden="true" />
@@ -1071,6 +1197,22 @@ function DishRow({
   );
 }
 
+/** Štítek AI fotky v rohu miniatury — jasně říká, že jde o ilustrační návrh. */
+const aiCornerBadgeStyle: CSSProperties = {
+  position: "absolute",
+  top: 4,
+  right: 4,
+  padding: "1px 6px",
+  borderRadius: 999,
+  background: "rgba(15, 23, 42, 0.82)",
+  color: "#fff",
+  fontSize: 10,
+  fontWeight: 700,
+  lineHeight: 1.4,
+  letterSpacing: "0.04em",
+  pointerEvents: "none"
+};
+
 const allergenCodes = new Set(allergenCatalog.map((allergen) => allergen.code));
 
 function isAllergenCode(value: string): value is AllergenCode {
@@ -1135,7 +1277,14 @@ type DishPhotoModalProps = {
   dishName: string;
   canteenId: string;
   onClose: () => void;
-  onPick: (photo: { assetId: string; url: string | null; focalPoint: { x: number; y: number } | null } | null) => void;
+  onPick: (
+    photo: {
+      assetId: string;
+      url: string | null;
+      focalPoint: { x: number; y: number } | null;
+      source: string | null;
+    } | null
+  ) => void;
 };
 
 function DishPhotoModal({ dishName, canteenId, onClose, onPick }: DishPhotoModalProps) {
@@ -1226,7 +1375,8 @@ function DishPhotoModal({ dishName, canteenId, onClose, onPick }: DishPhotoModal
         onPick({
           assetId: cutout.assetId,
           url: cutout.signedUrl ?? null,
-          focalPoint: { x: 0.5, y: 0.5 }
+          focalPoint: { x: 0.5, y: 0.5 },
+          source: "cutout"
         });
         return;
       }
@@ -1254,7 +1404,8 @@ function DishPhotoModal({ dishName, canteenId, onClose, onPick }: DishPhotoModal
       onPick({
         assetId: registered.assetId,
         url: registered.signedUrl ?? null,
-        focalPoint: { x: 0.5, y: 0.5 }
+        focalPoint: { x: 0.5, y: 0.5 },
+        source: "upload"
       });
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Nahrání selhalo.");
@@ -1354,8 +1505,14 @@ function DishPhotoModal({ dishName, canteenId, onClose, onPick }: DishPhotoModal
                 key={photo.id}
                 className="photo-grid-item"
                 onClick={() =>
-                  onPick({ assetId: photo.assetId, url: photo.signedUrl, focalPoint: photo.focalPoint })
+                  onPick({
+                    assetId: photo.assetId,
+                    url: photo.signedUrl,
+                    focalPoint: photo.focalPoint,
+                    source: photo.source ?? null
+                  })
                 }
+                style={{ position: "relative" }}
                 type="button"
               >
                 {photo.signedUrl ? (
@@ -1364,6 +1521,11 @@ function DishPhotoModal({ dishName, canteenId, onClose, onPick }: DishPhotoModal
                 ) : (
                   <span className="photo-grid-missing">bez náhledu</span>
                 )}
+                {photo.source === "ai" ? (
+                  <span style={aiCornerBadgeStyle} title="Ilustrační fotka vygenerovaná AI">
+                    AI návrh
+                  </span>
+                ) : null}
                 <span>{photo.dishName}</span>
               </button>
             ))

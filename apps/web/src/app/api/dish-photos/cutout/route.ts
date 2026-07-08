@@ -153,6 +153,19 @@ export async function POST(request: Request) {
     );
   }
 
+  // register_dish_photo nezná source (default 'upload') — výřez označíme
+  // dodatečně přes service roli, aby ho knihovna odlišila od AI a uploadu.
+  const sourceUpdate = await admin
+    .from("dish_photos")
+    .update({ source: "cutout" })
+    .eq("org_id", access.orgId)
+    .eq("asset_id", asset.id);
+
+  if (sourceUpdate.error) {
+    // Fotka je zaregistrovaná a funkční — špatný štítek původu nesmí shodit odpověď.
+    console.error(`dish_cutout_source_update_failed: ${sourceUpdate.error.message}`);
+  }
+
   const signed = await admin.storage
     .from(asset.bucket)
     .createSignedUrl(asset.object_path, SIGNED_URL_SECONDS);

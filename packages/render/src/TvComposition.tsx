@@ -654,6 +654,25 @@ function ImageLayer({
           }}
         />
       ) : null}
+      {item?.photoSource === "ai" ? (
+        <span
+          style={{
+            position: "absolute",
+            right: "10px",
+            bottom: "10px",
+            borderRadius: "999px",
+            padding: "4px 14px",
+            background: "rgba(25, 21, 19, 0.6)",
+            color: "#fffaf0",
+            fontSize: "20px",
+            fontWeight: 600,
+            fontStyle: "italic",
+            lineHeight: 1.2
+          }}
+        >
+          ilustrační foto
+        </span>
+      ) : null}
     </div>
   );
 }

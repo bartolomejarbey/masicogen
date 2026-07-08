@@ -2,9 +2,17 @@ import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { renderManifestSchema, type RenderManifest } from "@masico/shared";
-import { buildConcatFfmpegArgs, buildFfmpegArgs, ffprobe, runCommand } from "./ffmpeg";
+import {
+  buildConcatFfmpegArgs,
+  buildConcatFile,
+  buildFfmpegArgs,
+  ffprobe,
+  runCommand,
+  type RenderedSlide
+} from "./ffmpeg";
 import { workerConfig } from "./config";
-import { buildConcatFile, renderDeckSlidesToPng } from "./svg-slide-renderer";
+import { renderDeckSlidesWithChromium } from "./chromium-slide-renderer";
+import { renderDeckSlidesToPng } from "./svg-slide-renderer";
 
 export type RenderResult = {
   outputPath: string;
@@ -13,7 +21,15 @@ export type RenderResult = {
   probe?: Awaited<ReturnType<typeof ffprobe>>;
 };
 
-export async function renderDeckToMp4(manifest: RenderManifest): Promise<RenderResult> {
+export type RenderDeckOptions = {
+  /** Mapa assetId → lokální cesta staženého assetu (downloadDeckAssets). */
+  assets?: ReadonlyMap<string, string>;
+};
+
+export async function renderDeckToMp4(
+  manifest: RenderManifest,
+  options: RenderDeckOptions = {}
+): Promise<RenderResult> {
   const parsed = renderManifestSchema.parse(manifest);
   const tempDir = await mkdtemp(join(tmpdir(), "masico-render-"));
   const framesDir = join(tempDir, "frames");
@@ -31,7 +47,13 @@ export async function renderDeckToMp4(manifest: RenderManifest): Promise<RenderR
       return { outputPath, tempDir, ffmpegArgs };
     }
 
-    const renderedSlides = await renderDeckSlidesToPng(parsed.deck, parsed.menu ?? null, framesDir);
+    // RENDER_ENGINE=svg = dočasný fallback na starou Resvg cestu.
+    const renderedSlides: RenderedSlide[] =
+      process.env.RENDER_ENGINE === "svg"
+        ? await renderDeckSlidesToPng(parsed.deck, parsed.menu ?? null, framesDir)
+        : await renderDeckSlidesWithChromium(parsed.deck, parsed.menu ?? null, framesDir, {
+            assets: options.assets
+          });
     const concatPath = join(tempDir, "concat.txt");
     await writeFile(concatPath, buildConcatFile(renderedSlides), "utf8");
     const expectedDurationSeconds = getExpectedDurationSeconds(parsed);

@@ -5,11 +5,12 @@ type WeekStripProps = {
   snapshot: ProductionDashboardSnapshot;
 };
 
-type DayState = "empty" | "draft" | "ready";
+type DayState = "empty" | "draft" | "review" | "ready";
 
 const dayStateCopy: Record<DayState, { label: string; hint: string }> = {
   empty: { label: "Prázdný", hint: "Menu zatím není" },
   draft: { label: "Rozepsaný", hint: "Menu čeká na dokončení" },
+  review: { label: "Zkontrolovat", hint: "Autopilot čeká na potvrzení" },
   ready: { label: "Připravený", hint: "V den D se pustí sám" }
 };
 
@@ -35,11 +36,15 @@ export function WeekStrip({ snapshot }: WeekStripProps) {
                 (candidate) => candidate.canteenId === canteenId && candidate.date === day.iso
               )
             : undefined;
+          // reviewPending má přednost: i dřív schválený den může dostat nový
+          // autopilotí draft, který je potřeba potvrdit.
           const state: DayState = !menu
             ? "empty"
-            : menu.status === "approved" || menu.status === "published"
-              ? "ready"
-              : "draft";
+            : menu.reviewPending
+              ? "review"
+              : menu.status === "approved" || menu.status === "published"
+                ? "ready"
+                : "draft";
           const copy = dayStateCopy[state];
 
           return (
@@ -55,7 +60,7 @@ export function WeekStrip({ snapshot }: WeekStripProps) {
               <span className="week-day-state">
                 {state === "ready" ? (
                   <CircleCheck size={18} aria-hidden="true" />
-                ) : state === "draft" ? (
+                ) : state === "draft" || state === "review" ? (
                   <Pencil size={18} aria-hidden="true" />
                 ) : (
                   <CircleDashed size={18} aria-hidden="true" />

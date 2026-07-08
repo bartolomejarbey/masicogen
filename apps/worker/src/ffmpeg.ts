@@ -1,6 +1,29 @@
 import { spawn } from "node:child_process";
 import { workerConfig } from "./config";
 
+export type RenderedSlide = {
+  durationSeconds: number;
+  path: string;
+};
+
+export function buildConcatFile(slides: RenderedSlide[]) {
+  if (slides.length === 0) {
+    throw new Error("Cannot render an empty deck.");
+  }
+
+  const lines = slides.flatMap((slide) => [
+    `file '${escapeConcatPath(slide.path)}'`,
+    `duration ${slide.durationSeconds.toFixed(3)}`
+  ]);
+  lines.push(`file '${escapeConcatPath(slides[slides.length - 1].path)}'`);
+
+  return `${lines.join("\n")}\n`;
+}
+
+export function escapeConcatPath(path: string) {
+  return path.replace(/'/g, "'\\''");
+}
+
 export function buildFfmpegArgs(inputPattern: string, outputPath: string) {
   return buildCompatibleMp4Args(["-r", "30", "-i", inputPattern], outputPath);
 }

@@ -15,12 +15,16 @@
     "@remotion/renderer": "^4.0.0",
     "@resvg/resvg-js": "^2.6.2",
     "@supabase/supabase-js": "^2.75.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "remotion": "^4.0.0",
     "tsx": "^4.20.0",
     "zod": "^4.1.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "typescript": "^5.9.0",
     "vitest": "^4.0.0"
   }

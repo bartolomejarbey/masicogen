@@ -16,6 +16,7 @@ type DishPhotoRow = {
   is_default: boolean;
   use_count: number;
   last_used_at: string | null;
+  source: string;
   assets: { bucket: string; object_path: string } | null;
 };
 
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
   const supabase = await createServerSupabaseClient();
   let photosQuery = supabase
     .from("dish_photos")
-    .select("id, asset_id, dish_name, dish_name_normalized, focal_point, is_default, use_count, last_used_at, assets(bucket, object_path)")
+    .select("id, asset_id, dish_name, dish_name_normalized, focal_point, is_default, use_count, last_used_at, source, assets(bucket, object_path)")
     .eq("org_id", access.orgId)
     .order("last_used_at", { ascending: false, nullsFirst: false })
     .order("use_count", { ascending: false })
@@ -76,6 +77,7 @@ export async function GET(request: Request) {
         focalPoint: row.focal_point,
         isDefault: row.is_default,
         useCount: row.use_count,
+        source: row.source,
         signedUrl
       };
     })

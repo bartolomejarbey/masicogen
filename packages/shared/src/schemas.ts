@@ -67,6 +67,7 @@ export const menuExtractionItemSchema = z.object({
   highlight: z.boolean().default(false),
   photoAssetId: z.string().nullable().optional(),
   photoFocalPoint: focalPointSchema.optional(),
+  photoSource: z.enum(["upload", "cutout", "ai"]).optional(),
   sourceRefs: z.array(sourceRefSchema).default([]),
   confidence: z.number().min(0).max(1).default(0)
 });
@@ -387,6 +388,28 @@ export const playerPayloadSchema = z.discriminatedUnion("mode", [
   playerManifestSchema,
   livePlayerManifestSchema
 ]);
+
+// --- Týdenní extrakce jídelního lístku (autopilot M2) ---
+
+export const weekDayOfWeekSchema = z.enum(["PO", "UT", "ST", "CT", "PA"]);
+
+export const weekDaySchema = z.object({
+  dayOfWeek: weekDayOfWeekSchema,
+  isHoliday: z.boolean().default(false),
+  holidayLabel: z.string().nullable().default(null),
+  menu: menuExtractionResultSchema.nullable(),
+  confidence: z.number().min(0).max(1).default(0),
+  warnings: z.array(z.string()).default([])
+});
+
+export const weekExtractionResultSchema = z.object({
+  weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  days: z.array(weekDaySchema).length(5)
+});
+
+export type WeekDayOfWeek = z.infer<typeof weekDayOfWeekSchema>;
+export type WeekDay = z.infer<typeof weekDaySchema>;
+export type WeekExtractionResult = z.infer<typeof weekExtractionResultSchema>;
 
 export type OrgRole = z.infer<typeof orgRoleSchema>;
 export type ApprovalStatus = z.infer<typeof approvalStatusSchema>;

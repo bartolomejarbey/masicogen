@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { type DeckManifest, type MenuExtractionResult, type RenderManifest } from "@masico/shared";
 import { workerConfig } from "./config";
+import { downloadDeckAssets } from "./deck-assets";
 import { persistFinalMp4Export } from "./export-artifacts";
 import { cleanupRenderResult, renderDeckToMp4, type RenderResult } from "./render-job";
 import { createWorkerSupabaseClient } from "./supabase";
@@ -75,9 +79,17 @@ export async function processOneRenderJob() {
 
     let result: RenderResult | null = null;
     let outputAssetId: string | null = null;
+    let assetsDir: string | null = null;
 
     try {
-      result = await renderDeckToMp4(manifest);
+      let assets: ReadonlyMap<string, string> | undefined;
+      const deckAssetIds = deckVersion.manifest_json.assetIds ?? [];
+      if (deckAssetIds.length > 0) {
+        assetsDir = await mkdtemp(join(tmpdir(), "masico-assets-"));
+        assets = await downloadDeckAssets(supabase, job.org_id, deckAssetIds, assetsDir);
+      }
+
+      result = await renderDeckToMp4(manifest, { assets });
 
       if (job.job_type === "render-final") {
         const persistedExport = await persistFinalMp4Export({
@@ -92,6 +104,9 @@ export async function processOneRenderJob() {
     } finally {
       if (result) {
         await cleanupRenderResult(result);
+      }
+      if (assetsDir) {
+        await rm(assetsDir, { recursive: true, force: true });
       }
     }
 

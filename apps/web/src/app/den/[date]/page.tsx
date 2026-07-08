@@ -12,6 +12,7 @@ import {
   getProductionDashboardSnapshot,
   type ProductionDashboardSnapshot
 } from "@/lib/studio-dashboard";
+import { loadResolvedSettings } from "@/lib/settings-store";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -54,9 +55,12 @@ export default async function DayPage({ params }: { params: Promise<{ date: stri
 
   const snapshot = await getProductionDashboardSnapshot(access.orgId);
   const defaultCanteenId = snapshot.canteens[0]?.id ?? null;
-  const prefill = defaultCanteenId
-    ? await loadDayMenu(access.orgId, defaultCanteenId, date)
-    : { menu: null, status: null };
+  const [prefill, settings] = await Promise.all([
+    defaultCanteenId
+      ? loadDayMenu(access.orgId, defaultCanteenId, date)
+      : Promise.resolve({ menu: null, status: null }),
+    loadResolvedSettings(access.orgId)
+  ]);
 
   return (
     <StudioShell access={access} activeSection="today">
@@ -67,6 +71,11 @@ export default async function DayPage({ params }: { params: Promise<{ date: stri
         snapshot={snapshot}
         initialMenu={prefill.menu}
         initialStatus={prefill.status}
+        settings={{
+          durationsSeconds: settings.loop.durationsSeconds,
+          enabledSlides: settings.loop.enabledSlides,
+          footerLegendText: settings.content.footerLegendText
+        }}
       />
     </StudioShell>
   );
@@ -132,6 +141,7 @@ function demoSnapshot(date: string): ProductionDashboardSnapshot {
     canteens: [{ id: demoCanteenId, locationId: demoLocationId, name: "Jídelna" }],
     screens: [],
     upcomingMenus: [],
+    autopilot: { lastMorningCheck: null, pendingReviewDates: [] },
     counts: {
       locations: 1,
       screens: 0,

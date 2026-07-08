@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { assertCompatibleMp4 } from "./render-job";
-import { buildConcatFile } from "./svg-slide-renderer";
+import { buildConcatFile } from "./ffmpeg";
 
 describe("render job validation", () => {
   it("builds an FFmpeg concat file with explicit slide durations", () => {

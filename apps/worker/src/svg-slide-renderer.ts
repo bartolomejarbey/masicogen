@@ -10,11 +10,10 @@ import {
   type MenuExtractionResult,
   type Slide
 } from "@masico/shared";
+import type { RenderedSlide } from "./ffmpeg";
 
-type RenderedSlide = {
-  durationSeconds: number;
-  path: string;
-};
+// Concat utility se přestěhovaly do ffmpeg.ts; re-export drží stávající importy.
+export { buildConcatFile, escapeConcatPath, type RenderedSlide } from "./ffmpeg";
 
 export async function renderDeckSlidesToPng(
   deck: DeckManifest,
@@ -47,20 +46,6 @@ export async function renderDeckSlidesToPng(
   }
 
   return renderedSlides;
-}
-
-export function buildConcatFile(slides: RenderedSlide[]) {
-  if (slides.length === 0) {
-    throw new Error("Cannot render an empty deck.");
-  }
-
-  const lines = slides.flatMap((slide) => [
-    `file '${escapeConcatPath(slide.path)}'`,
-    `duration ${slide.durationSeconds.toFixed(3)}`
-  ]);
-  lines.push(`file '${escapeConcatPath(slides[slides.length - 1].path)}'`);
-
-  return `${lines.join("\n")}\n`;
 }
 
 function renderSlideSvg(deck: DeckManifest, menu: MenuExtractionResult | null, slide: Slide) {
@@ -235,8 +220,4 @@ function escapeXml(value: string) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
-}
-
-function escapeConcatPath(path: string) {
-  return path.replace(/'/g, "'\\''");
 }

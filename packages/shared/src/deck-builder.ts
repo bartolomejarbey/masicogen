@@ -86,6 +86,10 @@ export type DailyDeckOptions = {
   templateVersionIds?: Record<string, string>;
   /** Délka jednotlivých slidů v sekundách; nevyplněné slidy dostanou výchozí délku ze šablony. */
   slideDurationsSeconds?: Partial<Record<DailyLoopSlideKey, number>>;
+  /** Vypnutí volitelných slidů z nastavení organizace (false = slide se nestaví). */
+  enabledSlides?: Partial<Record<DailyLoopSlideKey, boolean>>;
+  /** Text legendy alergenů ve footeru — personalizace z nastavení organizace. */
+  footerLegendText?: string;
 };
 
 export function buildDailyDeckManifest(
@@ -98,9 +102,27 @@ export function buildDailyDeckManifest(
   const assetIds = new Set<string>();
 
   for (const definition of dailyLoopSlides) {
-    const template = templates.find((candidate) => candidate.id === definition.templateId);
-    if (!template) {
+    // Povinné slidy (přehled, polévky, hlavní jídla) nelze vypnout ani přes
+    // API — UI to sice hlídá, ale settings patch může přijít odkudkoli.
+    if (definition.optional && options.enabledSlides?.[definition.key] === false) {
       continue;
+    }
+
+    const sourceTemplate = templates.find((candidate) => candidate.id === definition.templateId);
+    if (!sourceTemplate) {
+      continue;
+    }
+
+    // Klon: manifest jde do decku i do editovatelných přepisů — sdílená
+    // reference by nechala pozdější mutace prosakovat do dailyLoopTemplates.
+    const template = structuredClone(sourceTemplate);
+
+    if (options.footerLegendText) {
+      for (const layer of template.layers) {
+        if (layer.type === "text" && layer.id === "brand-footer-text") {
+          layer.text = options.footerLegendText;
+        }
+      }
     }
 
     const section = definition.sectionKey

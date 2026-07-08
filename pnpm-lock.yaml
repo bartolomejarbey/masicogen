@@ -90,6 +90,12 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.75.0
         version: 2.110.0
+      react:
+        specifier: ^19.0.0
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.7(react@19.2.7)
       remotion:
         specifier: ^4.0.0
         version: 4.0.484(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -103,6 +109,12 @@ importers:
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.2
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.3(@types/react@19.2.17)
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -119,6 +131,9 @@ importers:
         specifier: ^19.0.0
         version: 19.2.7
     devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.2
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.17

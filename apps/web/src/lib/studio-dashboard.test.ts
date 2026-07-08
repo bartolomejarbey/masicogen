@@ -48,6 +48,16 @@ describe("production studio dashboard summary", () => {
           current_version_id: "menu-version-1"
         }
       ],
+      menuVersions: [
+        {
+          id: "menu-version-1",
+          menu_id: "menu-1",
+          status: "approved",
+          extraction_model: null,
+          created_at: "2026-07-05T08:00:00.000Z"
+        }
+      ],
+      lastMorningCheck: null,
       exportCount: 1,
       runningRenderJobCount: 2,
       dataError: null
@@ -94,6 +104,19 @@ describe("production studio dashboard summary", () => {
         currentDeckVersionId: null
       }
     ]);
+    expect(snapshot.upcomingMenus).toEqual([
+      {
+        canteenId: "canteen-1",
+        locationId: "loc-1",
+        date: "2026-07-06",
+        status: "approved",
+        reviewPending: false
+      }
+    ]);
+    expect(snapshot.autopilot).toEqual({
+      lastMorningCheck: null,
+      pendingReviewDates: []
+    });
 
     vi.useRealTimers();
   });
@@ -130,6 +153,8 @@ describe("production studio dashboard summary", () => {
           current_version_id: "menu-version-1"
         }
       ],
+      menuVersions: [],
+      lastMorningCheck: null,
       exportCount: 1,
       runningRenderJobCount: 0,
       dataError: null
@@ -138,6 +163,104 @@ describe("production studio dashboard summary", () => {
     expect(snapshot.locations[0]).toMatchObject({
       confirmedScreenCount: 0,
       blockingStatus: "awaiting_tv_confirmation"
+    });
+
+    vi.useRealTimers();
+  });
+
+  it("flags autopilot drafts awaiting review and passes the last morning check through", () => {
+    vi.setSystemTime(new Date("2026-07-06T10:00:00.000Z"));
+
+    const snapshot = summarizeProductionDashboard({
+      orgId: "org-1",
+      orgName: "MASI-CO",
+      todayIso: "2026-07-06",
+      locations: [{ id: "loc-1", name: "Jídelna" }],
+      canteens: [{ id: "canteen-1", location_id: "loc-1", name: "Hlavní jídelna" }],
+      screens: [],
+      menus: [
+        {
+          id: "menu-1",
+          location_id: "loc-1",
+          canteen_id: "canteen-1",
+          menu_date: "2026-07-06",
+          status: "approved",
+          current_version_id: "menu-version-1"
+        },
+        {
+          id: "menu-2",
+          location_id: "loc-1",
+          canteen_id: "canteen-1",
+          menu_date: "2026-07-07",
+          status: "draft",
+          current_version_id: null
+        }
+      ],
+      menuVersions: [
+        // Approved den: schválená verze je nejnovější — review není potřeba.
+        {
+          id: "menu-version-1",
+          menu_id: "menu-1",
+          status: "approved",
+          extraction_model: "openai-vision-week",
+          created_at: "2026-07-05T08:00:00.000Z"
+        },
+        // Zítřek: nejnovější verze je autopilotí draft → čeká na kontrolu.
+        {
+          id: "menu-version-2",
+          menu_id: "menu-2",
+          status: "draft",
+          extraction_model: "openai-vision-week",
+          created_at: "2026-07-05T08:00:01.000Z"
+        }
+      ],
+      lastMorningCheck: {
+        status: "degraded",
+        detail: {
+          hasDeckToday: false,
+          screensOnline: 0,
+          screensTotal: 1,
+          failedPhotoJobs: 0,
+          failedRenderJobs: 0,
+          pendingReview: true
+        },
+        started_at: "2026-07-06T03:30:00.000Z"
+      },
+      exportCount: 0,
+      runningRenderJobCount: 0,
+      dataError: null
+    });
+
+    expect(snapshot.upcomingMenus).toEqual([
+      {
+        canteenId: "canteen-1",
+        locationId: "loc-1",
+        date: "2026-07-06",
+        status: "approved",
+        reviewPending: false
+      },
+      {
+        canteenId: "canteen-1",
+        locationId: "loc-1",
+        date: "2026-07-07",
+        status: "draft",
+        reviewPending: true
+      }
+    ]);
+    expect(snapshot.autopilot).toEqual({
+      lastMorningCheck: {
+        status: "degraded",
+        detail: {
+          hasDeckToday: false,
+          screensOnline: 0,
+          screensTotal: 1,
+          failedPhotoJobs: 0,
+          failedRenderJobs: 0,
+          pendingReview: true
+        },
+        startedAt: "2026-07-06T03:30:00.000Z"
+      },
+      pendingReviewDates: ["2026-07-07"]
     });
 
     vi.useRealTimers();

@@ -46,7 +46,9 @@ export const studioRoles = [
 export const studioRoleGroups = {
   all: studioRoles,
   contentEditors: ["owner", "admin", "editor", "designer"],
-  menuImporters: ["owner", "admin", "editor"],
+  // Publisher (obsluha TV / kuchařka) smí nahrát týdenní lístek — bez toho by
+  // autopilot v praxi nikdo nekrmil (rozhodnutí 11 blueprintu).
+  menuImporters: ["owner", "admin", "editor", "publisher"],
   renderOperators: ["owner", "admin", "editor", "designer", "publisher"],
   approvers: ["owner", "admin", "approver"],
   screenManagers: ["owner", "admin", "publisher"]

@@ -924,3 +924,55 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
 export function getDailyLoopTemplate(id: string) {
   return dailyLoopTemplates.find((template) => template.id === id) ?? null;
 }
+
+/**
+ * Sváteční oznámení pro státní svátky — jediný slide, který autopilot pustí
+ * místo denní smyčky, aby TV nedržela včerejší ceny (rozhodnutí 9 blueprintu).
+ * Záměrně samostatný export: do dailyLoopTemplates nepatří, nesmí se stavět
+ * v běžné denní smyčce. Nadpis slidu (holidayLabel) přichází jako slide.title.
+ */
+export const holidayNoticeTemplate: TemplateManifestV2 = {
+  schemaVersion: 2,
+  id: "holiday-notice",
+  name: "Státní svátek",
+  templateKind: "info",
+  canvas,
+  safeArea,
+  backgroundColor: brandTokens.red,
+  backgroundGradient: `linear-gradient(160deg, ${brandTokens.red} 0%, ${brandTokens.redDark} 100%)`,
+  backgroundAssetId: null,
+  durationFrames: 300,
+  transition: "fade",
+  layers: [
+    logo("holiday-logo", { x: 660, y: 150, w: 600, h: 200, zIndex: 2 }, "white"),
+    text("holiday-title", { x: 160, y: 470, w: 1600, h: 240, zIndex: 2 }, {
+      role: "headline",
+      binding: { source: "menu", field: "title" },
+      color: "#ffffff",
+      align: "center",
+      fontSizePx: 100,
+      fontWeight: 700,
+      lineHeight: 1.08,
+      maxLines: 2,
+      locked: true
+    }),
+    text("holiday-note", { x: 260, y: 760, w: 1400, h: 64, zIndex: 2 }, {
+      role: "note",
+      text: "Dnes máme zavřeno",
+      color: "#ffffff",
+      align: "center",
+      fontSizePx: 44,
+      fontWeight: 600,
+      fontStyle: "italic",
+      maxLines: 1,
+      locked: true
+    })
+  ],
+  validationRules: {
+    ...dailyLoopRules,
+    maxItemsPerSlide: 1,
+    minItems: 0,
+    maxItems: 1,
+    requirePhotos: "off"
+  }
+};

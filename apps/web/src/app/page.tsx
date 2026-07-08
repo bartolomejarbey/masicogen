@@ -12,6 +12,7 @@ import {
   Utensils
 } from "lucide-react";
 import { demoDeck, demoMenu, formatCzechDate } from "@masico/shared";
+import { AutopilotBanner } from "@/components/AutopilotBanner";
 import { MenuReview } from "@/components/MenuReview";
 import { ProductionQuickLaunch } from "@/components/ProductionQuickLaunch";
 import { WeekStrip } from "@/components/WeekStrip";
@@ -248,6 +249,8 @@ function ProductionHome({
         <ProductionDataError error={snapshot.dataError} />
       ) : (
         <>
+          <AutopilotBanner snapshot={snapshot} />
+
           <section className="day-entry-card" aria-label="Denní menu">
             <div>
               <h2>Dnešní menu po jídlech</h2>
@@ -256,10 +259,15 @@ function ProductionHome({
                 s fotkami a živým náhledem TV.
               </p>
             </div>
-            <a className="button primary large" href={`/den/${snapshot.todayIso}`}>
-              <CalendarPlus size={22} aria-hidden="true" />
-              Upravit dnešní menu
-            </a>
+            <div className="actions">
+              <a className="button primary large" href={`/den/${snapshot.todayIso}`}>
+                <CalendarPlus size={22} aria-hidden="true" />
+                Upravit dnešní menu
+              </a>
+              <a className="button" href="/tyden">
+                Nahrát týdenní lístek
+              </a>
+            </div>
           </section>
 
           <WeekStrip snapshot={snapshot} />

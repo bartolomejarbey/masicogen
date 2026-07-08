@@ -1,5 +1,6 @@
 import { requireStudioApiAccess } from "@/lib/studio-auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 type SuggestRow = {
   display_name: string;
@@ -49,12 +50,38 @@ export async function GET(request: Request) {
     );
   }
 
-  const suggestions = ((data as SuggestRow[] | null) ?? []).map((row) => ({
+  const rows = (data as SuggestRow[] | null) ?? [];
+
+  // suggest_dishes source fotky nevrací — dotáhneme ho jedním dotazem,
+  // aby UI umělo označit AI návrhy („ilustrační foto“).
+  const sourceByAssetId = new Map<string, string>();
+  const assetIds = [
+    ...new Set(rows.map((row) => row.photo_asset_id).filter((id): id is string => Boolean(id)))
+  ];
+
+  const admin = getSupabaseAdmin();
+  if (admin && assetIds.length > 0) {
+    const { data: photoRows } = await admin
+      .from("dish_photos")
+      .select("asset_id, source")
+      .eq("org_id", access.orgId)
+      .in("asset_id", assetIds)
+      .returns<Array<{ asset_id: string; source: string }>>();
+
+    for (const photo of photoRows ?? []) {
+      sourceByAssetId.set(photo.asset_id, photo.source);
+    }
+  }
+
+  const suggestions = rows.map((row) => ({
     name: row.display_name,
     priceCzk: row.price_czk,
     allergens: row.allergen_codes,
     photoAssetId: row.photo_asset_id,
     photoFocalPoint: row.photo_focal_point,
+    photoSource: row.photo_asset_id
+      ? sourceByAssetId.get(row.photo_asset_id) ?? null
+      : null,
     timesUsed: row.times_used,
     lastMenuDate: row.last_menu_date
   }));

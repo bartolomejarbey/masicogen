@@ -9,6 +9,10 @@ export const config: VercelConfig = {
     {
       path: "/api/maintenance/retention",
       schedule: "0 2 * * *"
+    },
+    {
+      path: "/api/automation/morning-check",
+      schedule: "30 3 * * *"
     }
   ]
 };

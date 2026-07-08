@@ -27,8 +27,9 @@ export async function POST(request: Request) {
   };
   const purpose = body.purpose === "dish_photo" ? "dish_photo" : "menu_source";
 
+  // menu_source: importovat smí i publisher (kuchařka krmí týdenní autopilot).
   const access = await requireStudioApiAccess(
-    purpose === "dish_photo" ? studioRoleGroups.renderOperators : studioRoleGroups.contentEditors
+    purpose === "dish_photo" ? studioRoleGroups.renderOperators : studioRoleGroups.menuImporters
   );
   if (access instanceof Response) {
     return access;

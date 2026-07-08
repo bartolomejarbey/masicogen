@@ -1,5 +1,4 @@
 import {
-  buildDailyDeckManifest,
   deckDurationSeconds,
   formatCzk,
   menuExtractionResultSchema,
@@ -10,6 +9,12 @@ import {
 } from "@masico/shared";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  approveMenuAndBuildDeck,
+  AutopilotBlockedError,
+  AutopilotError,
+  type ApproveMenuAndBuildDeckResult
+} from "./autopilot";
 
 const slideDurationSchema = z
   .number()
@@ -147,56 +152,33 @@ export async function launchDayMenu(
     );
   }
 
-  const approvedMenu = await supabase.rpc("approve_menu_version", {
-    target_menu_version_id: importResult.menu_version_id,
-    approval_comment: input.comment ?? "Denní menu potvrzeno obsluhou."
-  });
-
-  if (approvedMenu.error) {
-    throw rpcFailure("day_menu_approval_failed", "Schválení menu selhalo", approvedMenu.error);
-  }
-
-  const manifest = buildDailyDeckManifest(input.menu, {
-    orgId: input.orgId,
-    locationId: input.locationId,
-    canteenId: input.canteenId,
-    menuVersionId: importResult.menu_version_id,
-    slideDurationsSeconds: input.slideDurationsSeconds
-  });
-
-  if (manifest.slides.length === 0) {
-    throw new DayLaunchError(
-      "day_menu_no_slides",
-      "Z menu nevznikl žádný slide — doplňte alespoň polévky nebo hlavní jídla.",
-      422
-    );
-  }
-
-  const createdDeck = await supabase.rpc("create_tv_deck_from_manifest", {
-    target_menu_version_id: importResult.menu_version_id,
-    deck_manifest: manifest
-  });
-
-  if (createdDeck.error) {
-    throw rpcFailure("day_deck_create_failed", "Vytvoření TV smyčky selhalo", createdDeck.error);
-  }
-
-  const deckResult = (createdDeck.data as DeckRow[] | null)?.[0];
-  if (!deckResult) {
-    throw new DayLaunchError(
-      "day_deck_missing_result",
-      "Vytvoření TV smyčky nevrátilo deck verzi.",
-      500
-    );
-  }
-
-  const approvedDeck = await supabase.rpc("approve_deck_version", {
-    target_deck_version_id: deckResult.deck_version_id,
-    approval_comment: input.comment ?? "TV smyčka potvrzena obsluhou."
-  });
-
-  if (approvedDeck.error) {
-    throw rpcFailure("day_deck_approval_failed", "Schválení TV smyčky selhalo", approvedDeck.error);
+  // Jedna schvalovací cesta pro ruční launch i týdenní autopilot: settings,
+  // org šablony a audit řeší approveMenuAndBuildDeck.
+  let deckResult: ApproveMenuAndBuildDeckResult;
+  try {
+    deckResult = await approveMenuAndBuildDeck(supabase, {
+      orgId: input.orgId,
+      locationId: input.locationId,
+      canteenId: input.canteenId,
+      menuVersionId: importResult.menu_version_id,
+      menu: input.menu,
+      menuDate: input.menuDate,
+      slideDurationsSeconds: input.slideDurationsSeconds,
+      comment: input.comment ?? "Denní menu potvrzeno obsluhou."
+    });
+  } catch (error) {
+    if (error instanceof AutopilotBlockedError) {
+      throw new DayLaunchError(
+        "day_menu_validation_failed",
+        "Před uložením doplňte chybějící ceny nebo alergeny.",
+        422,
+        error.issues.map((issue) => ({ code: issue.code, message: issue.message }))
+      );
+    }
+    if (error instanceof AutopilotError) {
+      throw new DayLaunchError(error.code, error.message, error.status);
+    }
+    throw error;
   }
 
   let published: DayLaunchResult["published"] = null;
@@ -212,7 +194,7 @@ export async function launchDayMenu(
 
     const publishedRpc = await supabase.rpc("publish_live_deck_to_screen", {
       target_screen_id: input.screenId,
-      target_deck_version_id: deckResult.deck_version_id,
+      target_deck_version_id: deckResult.deckVersionId,
       publish_comment: input.comment ?? "Denní menu: live publish."
     });
 
@@ -239,11 +221,11 @@ export async function launchDayMenu(
   return {
     menuVersionId: importResult.menu_version_id,
     menuId: importResult.menu_id,
-    deckId: deckResult.deck_id,
-    deckVersionId: deckResult.deck_version_id,
+    deckId: deckResult.deckId,
+    deckVersionId: deckResult.deckVersionId,
     itemCount,
-    loopDurationSeconds: Math.round(deckDurationSeconds(manifest)),
-    slideCount: manifest.slides.length,
+    loopDurationSeconds: Math.round(deckDurationSeconds(deckResult.manifest)),
+    slideCount: deckResult.manifest.slides.length,
     published
   };
 }

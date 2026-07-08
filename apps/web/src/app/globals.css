@@ -3507,3 +3507,619 @@ a {
   height: 24px;
   accent-color: var(--red);
 }
+
+/* === Nastavení (/nastaveni) === */
+
+.settings-page {
+  display: grid;
+  max-width: 980px;
+  gap: 18px;
+  padding-bottom: 24px;
+}
+
+.settings-card {
+  display: grid;
+  gap: 16px;
+}
+
+.settings-card-head h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.settings-card-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.settings-slide-list {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-slide-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: #fff;
+}
+
+.settings-slide-row.off {
+  background: var(--background);
+}
+
+.settings-slide-row.off .settings-slide-toggle strong {
+  color: var(--muted);
+}
+
+.settings-slide-toggle {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+}
+
+.settings-slide-toggle input[type="checkbox"],
+.settings-switch input[type="checkbox"] {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  accent-color: var(--red);
+  cursor: pointer;
+}
+
+.settings-slide-toggle input[type="checkbox"]:disabled,
+.settings-switch input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
+.settings-slide-toggle > span,
+.settings-switch > span {
+  display: grid;
+  gap: 2px;
+}
+
+.settings-slide-toggle strong {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.settings-slide-toggle small,
+.settings-switch small {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.settings-loop-total {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  font-size: 17px;
+}
+
+.settings-loop-total small {
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-field {
+  display: grid;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.settings-field textarea,
+.settings-field input {
+  min-height: 48px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #fff;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.settings-field textarea {
+  resize: vertical;
+}
+
+.settings-field textarea:disabled,
+.settings-field input:disabled {
+  background: var(--background);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.settings-field small {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.settings-legend-preview {
+  margin: 0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  background: var(--red);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.settings-switch {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 14px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.settings-switch strong {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.settings-limit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.settings-runs-table td {
+  vertical-align: top;
+  font-size: 16px;
+}
+
+.settings-run-status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+}
+
+.settings-run-status.good {
+  color: var(--green);
+}
+
+.settings-run-status.muted {
+  color: var(--muted);
+}
+
+.settings-run-status.bad {
+  color: var(--red);
+}
+
+.settings-run-status.warn {
+  color: var(--amber);
+}
+
+.settings-run-detail {
+  width: 100%;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.settings-save-bar {
+  position: sticky;
+  z-index: 30;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 18px;
+  background: var(--surface-strong);
+  box-shadow: 0 -12px 34px rgba(57, 39, 28, 0.12);
+}
+
+.settings-save-status {
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.settings-save-status .settings-save-done,
+.settings-save-status .settings-save-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-save-done {
+  color: var(--green);
+}
+
+.settings-save-error {
+  color: var(--red);
+}
+
+.day-audit-hints {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.day-audit-hints ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* --- Týdenní přehled (/tyden) — M2 autopilot --- */
+
+.week-review {
+  display: grid;
+  gap: 22px;
+}
+
+.week-review-head {
+  display: grid;
+  gap: 8px;
+}
+
+.week-review-head h1 {
+  margin: 0;
+  font-size: 34px;
+}
+
+.week-review-head p:not(.eyebrow) {
+  margin: 0;
+  max-width: 720px;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.week-review-upload {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  padding: 22px;
+  background: var(--surface);
+}
+
+.visually-hidden-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.week-review-upload-button {
+  min-height: 60px;
+  padding: 14px 26px;
+  font-size: 19px;
+}
+
+.week-review-upload-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.week-review-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.week-review-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 17px;
+}
+
+.week-review-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.week-review-banner.error {
+  border: 1px solid rgba(183, 28, 28, 0.35);
+  background: rgba(183, 28, 28, 0.08);
+  color: var(--red);
+  font-weight: 700;
+}
+
+.week-review-banner.success {
+  border: 1px solid rgba(31, 122, 77, 0.35);
+  background: rgba(31, 122, 77, 0.08);
+  color: var(--green);
+}
+
+.week-review-banner.success ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--text);
+  font-size: 16px;
+}
+
+.week-review-layout {
+  display: grid;
+  gap: 18px;
+  align-items: start;
+}
+
+.week-review-layout.with-photo {
+  grid-template-columns: minmax(0, 340px) 1fr;
+}
+
+@media (max-width: 980px) {
+  .week-review-layout.with-photo {
+    grid-template-columns: 1fr;
+  }
+}
+
+.week-review-source {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  background: var(--surface);
+}
+
+.week-review-source h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.week-review-source img {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.week-review-source p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.week-review-source-link {
+  min-height: 48px;
+}
+
+.week-review-days {
+  display: grid;
+  gap: 14px;
+}
+
+.week-review-day {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.week-review-day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.week-review-day-head h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.week-review-day-head p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.week-review-day-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.week-review-day-state.empty {
+  background: rgba(111, 103, 96, 0.12);
+  color: var(--muted);
+}
+
+.week-review-day-state.holiday {
+  background: rgba(39, 106, 134, 0.12);
+  color: var(--blue);
+}
+
+.week-review-day-state.review {
+  background: rgba(133, 83, 10, 0.14);
+  color: var(--amber);
+}
+
+.week-review-day-state.ready {
+  background: rgba(31, 122, 77, 0.12);
+  color: var(--green);
+}
+
+.week-review-day-holiday {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.week-review-day-dishes {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 17px;
+}
+
+.week-review-day-dishes .more {
+  color: var(--muted);
+  list-style: none;
+  margin-left: -20px;
+}
+
+.week-review-day-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.week-review-day-autopilot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  border: 1px solid rgba(133, 83, 10, 0.35);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: rgba(246, 169, 162, 0.18);
+  color: var(--amber);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.week-review-day-issues {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--red);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.week-review-day-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.week-review-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 12px 22px;
+  font-size: 18px;
+}
+
+/* === Autopilot banner na homepage (M7b) === */
+
+.autopilot-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 22px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.autopilot-banner > div {
+  flex: 1;
+  min-width: 240px;
+}
+
+.autopilot-banner strong {
+  display: block;
+  font-size: 19px;
+  line-height: 1.25;
+}
+
+.autopilot-banner p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.autopilot-banner.review {
+  border-color: rgba(133, 83, 10, 0.55);
+  background: rgba(246, 205, 120, 0.16);
+}
+
+.autopilot-banner.review > svg,
+.autopilot-banner.review strong {
+  color: var(--amber);
+}
+
+.autopilot-banner.alert {
+  border-color: var(--red);
+  background: rgba(183, 28, 28, 0.07);
+}
+
+.autopilot-banner.alert > svg,
+.autopilot-banner.alert strong {
+  color: var(--red);
+}
+
+.autopilot-banner.ok {
+  border-color: rgba(31, 122, 77, 0.5);
+  background: rgba(31, 122, 77, 0.08);
+}
+
+.autopilot-banner.ok > svg,
+.autopilot-banner.ok strong {
+  color: var(--green);
+}
+
+/* Čtvrtý stav týdenního pásu: autopilotí draft čeká na potvrzení. */
+.week-day.review .week-day-state {
+  color: var(--amber);
+}
