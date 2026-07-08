@@ -78,17 +78,21 @@ export function validateDeckAgainstTemplates(
       });
     }
 
-    if (slide.durationFrames < 150) {
+    if (slide.durationFrames < 90) {
       issues.push({
         severity: "warning",
         code: "short_duration",
-        message: `${slide.title}: slide je kratší než 5 sekund.`
+        message: `${slide.title}: slide je kratší než 3 sekundy.`
       });
     }
   }
 
+  const legendRequired = deck.slides.some((slide) => {
+    const template = templates.find((candidate) => candidate.id === slide.templateId);
+    return template?.validationRules.requireAllergenLegend ?? false;
+  });
   const hasLegend = deck.slides.some((slide) => slide.templateId === "allergen-legend");
-  if (!hasLegend) {
+  if (legendRequired && !hasLegend) {
     issues.push({
       severity: "error",
       code: "missing_allergen_legend",

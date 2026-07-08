@@ -153,6 +153,7 @@ export function TvPlayer({ allowDemoFallback = false, screenId }: TvPlayerProps)
 
 function LiveTvLoop({ manifest }: { manifest: Extract<PlayerPayload, { mode: "live" }> }) {
   const [activeSlideId, setActiveSlideId] = useState(manifest.deck.slides[0]?.id);
+  const staleMenuLabel = getStaleMenuLabel(manifest.menu.date);
 
   useEffect(() => {
     if (manifest.deck.slides.length <= 1) {
@@ -174,14 +175,73 @@ function LiveTvLoop({ manifest }: { manifest: Extract<PlayerPayload, { mode: "li
 
   return (
     <ScaledTvFrame>
-      <TvComposition
-        deck={manifest.deck}
-        menu={manifest.menu}
-        activeSlideId={activeSlideId}
-        showSafeArea={false}
-      />
+      <div style={{ position: "relative", width: "1920px", height: "1080px" }}>
+        <TvComposition
+          deck={manifest.deck}
+          menu={manifest.menu}
+          activeSlideId={activeSlideId}
+          showSafeArea={false}
+        />
+        {staleMenuLabel ? (
+          <div
+            style={{
+              position: "absolute",
+              zIndex: 50,
+              top: 0,
+              left: 0,
+              right: 0,
+              display: "flex",
+              justifyContent: "center",
+              padding: "18px",
+              pointerEvents: "none"
+            }}
+          >
+            <span
+              style={{
+                borderRadius: "999px",
+                padding: "14px 34px",
+                background: "rgba(25, 21, 19, 0.85)",
+                color: "#fffaf0",
+                fontSize: "34px",
+                fontWeight: 800
+              }}
+            >
+              {staleMenuLabel}
+            </span>
+          </div>
+        ) : null}
+      </div>
     </ScaledTvFrame>
   );
+}
+
+/**
+ * Když na dnešek nikdo nepřipravil menu, TV drží poslední publikovanou
+ * smyčku — hosté ale musí vidět, že jde o menu z jiného dne (staré ceny).
+ */
+function getStaleMenuLabel(menuDate: string | null) {
+  if (!menuDate) {
+    return null;
+  }
+
+  const todayIso = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Prague",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date());
+
+  if (menuDate === todayIso) {
+    return null;
+  }
+
+  const label = new Intl.DateTimeFormat("cs-CZ", {
+    weekday: "long",
+    day: "numeric",
+    month: "long"
+  }).format(new Date(`${menuDate}T12:00:00`));
+
+  return `Menu z: ${label} — dnešní menu připravujeme`;
 }
 
 function getPlayerErrorCopy(error: string | null, videoError: string | null, screenId: string) {

@@ -39,3 +39,24 @@ Vepřový řízek 159 Kč alergeny 1, 3, 7
     expect(menu.warnings.some((warning) => warning.includes("prompt injection"))).toBe(true);
   });
 });
+
+describe("parsePastedMenuText — sekce pizza a bufet", () => {
+  it("rozpozná pizzu dne a teplý bufet jako samostatné sekce", () => {
+    const menu = parsePastedMenuText(
+      [
+        "Pizza dne",
+        "Pizza Prosciutto 165 Kč alergeny 1, 7",
+        "Teplý bufet",
+        "Kuřecí stehno 32 Kč alergeny 1"
+      ].join("\n"),
+      "2026-07-08"
+    );
+
+    const sectionIds = menu.sections.map((section) => section.id);
+    expect(sectionIds).toContain("pizza");
+    expect(sectionIds).toContain("buffet");
+    expect(menu.sections.find((section) => section.id === "pizza")?.items[0]?.name).toBe(
+      "Pizza Prosciutto"
+    );
+  });
+});

@@ -14,6 +14,7 @@ import {
 import { demoDeck, demoMenu, formatCzechDate } from "@masico/shared";
 import { MenuReview } from "@/components/MenuReview";
 import { ProductionQuickLaunch } from "@/components/ProductionQuickLaunch";
+import { WeekStrip } from "@/components/WeekStrip";
 import { StatusBadge } from "@/components/StatusBadge";
 import { StudioShell } from "@/components/StudioShell";
 import { TvStudioClient } from "@/components/TvStudioClient";
@@ -247,11 +248,33 @@ function ProductionHome({
         <ProductionDataError error={snapshot.dataError} />
       ) : (
         <>
-          <ProductionQuickLaunch
-            canLaunch={canLaunchToday(access.role)}
-            roleLabel={getRoleLabel(access.role)}
-            snapshot={snapshot}
-          />
+          <section className="day-entry-card" aria-label="Denní menu">
+            <div>
+              <h2>Dnešní menu po jídlech</h2>
+              <p>
+                Nový přehledný formulář: polévky, hlavní jídla, pizza, bufet a dezerty
+                s fotkami a živým náhledem TV.
+              </p>
+            </div>
+            <a className="button primary large" href={`/den/${snapshot.todayIso}`}>
+              <CalendarPlus size={22} aria-hidden="true" />
+              Upravit dnešní menu
+            </a>
+          </section>
+
+          <WeekStrip snapshot={snapshot} />
+
+          <details className="settings-details">
+            <summary>
+              <span>Pokročilé: vložit menu jako text</span>
+              <small>Původní rychlé spuštění z vloženého textu</small>
+            </summary>
+            <ProductionQuickLaunch
+              canLaunch={canLaunchToday(access.role)}
+              roleLabel={getRoleLabel(access.role)}
+              snapshot={snapshot}
+            />
+          </details>
 
           <ProductionTodaySummary snapshot={snapshot} />
           <ProductionSettings access={access} snapshot={snapshot} />
@@ -576,5 +599,11 @@ function getRoleLabel(role: StudioAccessRole) {
 }
 
 function canLaunchToday(role: StudioAccessRole) {
-  return role === "owner" || role === "admin";
+  return (
+    role === "owner" ||
+    role === "admin" ||
+    role === "editor" ||
+    role === "designer" ||
+    role === "publisher"
+  );
 }

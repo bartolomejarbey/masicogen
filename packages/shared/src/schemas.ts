@@ -48,6 +48,11 @@ export const sourceRefSchema = z.object({
   text: z.string().optional()
 });
 
+export const focalPointSchema = z.object({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1)
+});
+
 export const menuExtractionItemSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -60,6 +65,8 @@ export const menuExtractionItemSchema = z.object({
   modifiers: z.array(z.string()).default([]),
   available: z.boolean().default(true),
   highlight: z.boolean().default(false),
+  photoAssetId: z.string().nullable().optional(),
+  photoFocalPoint: focalPointSchema.optional(),
   sourceRefs: z.array(sourceRefSchema).default([]),
   confidence: z.number().min(0).max(1).default(0)
 });
@@ -155,6 +162,21 @@ export const safeAreaSchema = z.object({
   height: z.number().int().positive()
 });
 
+export const templateKindSchema = z.enum([
+  "daily_menu",
+  "soup_mains",
+  "special",
+  "promo",
+  "sold_out",
+  "info",
+  "allergen_legend",
+  "brand_intro",
+  "soups_duo",
+  "mains_grid",
+  "pizza_day",
+  "hot_buffet"
+]);
+
 export const textLayerSchema = z.object({
   id: z.string(),
   role: z.enum(["headline", "subheadline", "item", "price", "note", "legend"]),
@@ -168,15 +190,7 @@ export const textLayerSchema = z.object({
 export const templateManifestSchema = z.object({
   id: z.string(),
   name: z.string(),
-  templateKind: z.enum([
-    "daily_menu",
-    "soup_mains",
-    "special",
-    "promo",
-    "sold_out",
-    "info",
-    "allergen_legend"
-  ]),
+  templateKind: templateKindSchema,
   canvas: canvasSchema,
   safeArea: safeAreaSchema,
   backgroundAssetId: z.string().nullable(),
@@ -189,6 +203,117 @@ export const templateManifestSchema = z.object({
     requireAllergenLegend: z.boolean().default(true)
   })
 });
+
+export const layerFrameSchema = z.object({
+  x: z.number().int(),
+  y: z.number().int(),
+  w: z.number().int().positive(),
+  h: z.number().int().positive(),
+  zIndex: z.number().int().default(0)
+});
+
+export const sectionKeySchema = z.enum(["soups", "mains", "pizza", "buffet", "special"]);
+
+export const layerBindingSchema = z.discriminatedUnion("source", [
+  z.object({
+    source: z.literal("item"),
+    sectionKey: sectionKeySchema,
+    index: z.number().int().nonnegative(),
+    field: z.enum(["name", "description", "price", "allergens", "photo"])
+  }),
+  z.object({
+    source: z.literal("menu"),
+    field: z.enum(["date", "title"])
+  }),
+  z.object({ source: z.literal("static") })
+]);
+
+const layerBaseShape = {
+  id: z.string(),
+  frame: layerFrameSchema,
+  group: z.string().nullable().default(null),
+  locked: z.boolean().default(false)
+};
+
+export const textLayerV2Schema = z.object({
+  ...layerBaseShape,
+  type: z.literal("text"),
+  role: z.enum(["headline", "subheadline", "item", "price", "note", "legend"]),
+  binding: layerBindingSchema.nullable().default(null),
+  text: z.string().nullable().default(null),
+  color: z.string().default("#191513"),
+  align: z.enum(["left", "center", "right"]).default("left"),
+  fontSizePx: z.number().int().min(30),
+  fontWeight: z.number().int().min(400).max(900).default(700),
+  lineHeight: z.number().positive().default(1.1),
+  maxLines: z.number().int().positive().default(2),
+  overflow: z.enum(["truncate", "block"]).default("truncate"),
+  uppercase: z.boolean().default(false)
+});
+
+export const imageLayerV2Schema = z.object({
+  ...layerBaseShape,
+  type: z.literal("image"),
+  binding: layerBindingSchema.nullable().default(null),
+  assetId: z.string().nullable().default(null),
+  fit: z.enum(["cover", "contain"]).default("cover"),
+  focalPoint: focalPointSchema.default({ x: 0.5, y: 0.5 }),
+  cornerRadius: z.number().int().nonnegative().default(0),
+  overlay: z.enum(["none", "darken-bottom", "darken-left"]).default("none"),
+  placeholder: z.enum(["dish", "none"]).default("dish")
+});
+
+export const logoLayerV2Schema = z.object({
+  ...layerBaseShape,
+  type: z.literal("logo"),
+  variant: z.enum(["red", "white"]).default("red")
+});
+
+export const shapeLayerV2Schema = z.object({
+  ...layerBaseShape,
+  type: z.literal("shape"),
+  fill: z.string(),
+  opacity: z.number().min(0).max(1).default(1),
+  cornerRadius: z.number().int().nonnegative().default(0)
+});
+
+export const templateLayerV2Schema = z.discriminatedUnion("type", [
+  textLayerV2Schema,
+  imageLayerV2Schema,
+  logoLayerV2Schema,
+  shapeLayerV2Schema
+]);
+
+export const validationRulesV2Schema = z.object({
+  minContrastRatio: z.number().default(4.5),
+  maxItemsPerSlide: z.number().int().positive().default(5),
+  requireAllergenLegend: z.boolean().default(false),
+  minItems: z.number().int().nonnegative().default(0),
+  maxItems: z.number().int().positive().default(5),
+  requirePhotos: z.enum(["off", "warn"]).default("off"),
+  minFontSizePx: z.number().int().positive().default(30)
+});
+
+export const templateManifestV2Schema = z.object({
+  schemaVersion: z.literal(2),
+  id: z.string(),
+  name: z.string(),
+  templateKind: templateKindSchema,
+  canvas: canvasSchema,
+  safeArea: safeAreaSchema,
+  backgroundColor: z.string().default("#f6f3ee"),
+  backgroundGradient: z.string().nullable().default(null),
+  backgroundAssetId: z.string().nullable().default(null),
+  durationFrames: z.number().int().positive(),
+  transition: z.enum(["cut", "fade"]).default("fade"),
+  layers: z.array(templateLayerV2Schema),
+  validationRules: validationRulesV2Schema
+});
+
+export const anyTemplateManifestSchema = z.union([
+  templateManifestV2Schema,
+  templateManifestSchema
+]);
 
 export const slideSchema = z.object({
   id: z.string(),
@@ -212,6 +337,7 @@ export const deckManifestSchema = z.object({
   canvas: canvasSchema,
   slides: z.array(slideSchema).min(1),
   templateVersionIds: z.array(z.string()),
+  templateManifests: z.record(z.string(), anyTemplateManifestSchema).optional(),
   assetIds: z.array(z.string()).default([]),
   assetUrls: z.record(z.string(), z.string().url()).default({}),
   rendererVersion: z.string()
@@ -264,10 +390,23 @@ export const playerPayloadSchema = z.discriminatedUnion("mode", [
 export type OrgRole = z.infer<typeof orgRoleSchema>;
 export type ApprovalStatus = z.infer<typeof approvalStatusSchema>;
 export type RenderJobStatus = z.infer<typeof renderJobStatusSchema>;
+export type FocalPoint = z.infer<typeof focalPointSchema>;
+export type MenuExtractionItem = z.infer<typeof menuExtractionItemSchema>;
 export type MenuExtractionResult = z.infer<typeof menuExtractionResultSchema>;
 export type MenuVersionSnapshot = z.infer<typeof menuVersionSnapshotSchema>;
 export type AssistantPatchOperation = z.infer<typeof assistantPatchOperationSchema>;
+export type TemplateKind = z.infer<typeof templateKindSchema>;
 export type TemplateManifest = z.infer<typeof templateManifestSchema>;
+export type LayerFrame = z.infer<typeof layerFrameSchema>;
+export type SectionKey = z.infer<typeof sectionKeySchema>;
+export type LayerBinding = z.infer<typeof layerBindingSchema>;
+export type TextLayerV2 = z.infer<typeof textLayerV2Schema>;
+export type ImageLayerV2 = z.infer<typeof imageLayerV2Schema>;
+export type LogoLayerV2 = z.infer<typeof logoLayerV2Schema>;
+export type ShapeLayerV2 = z.infer<typeof shapeLayerV2Schema>;
+export type TemplateLayerV2 = z.infer<typeof templateLayerV2Schema>;
+export type TemplateManifestV2 = z.infer<typeof templateManifestV2Schema>;
+export type AnyTemplateManifest = z.infer<typeof anyTemplateManifestSchema>;
 export type Slide = z.infer<typeof slideSchema>;
 export type DeckManifest = z.infer<typeof deckManifestSchema>;
 export type RenderManifest = z.infer<typeof renderManifestSchema>;

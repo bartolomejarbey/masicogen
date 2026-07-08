@@ -3,6 +3,7 @@ import {
   CheckSquare,
   Home,
   MonitorPlay,
+  Palette,
   Settings,
   ShieldAlert
 } from "lucide-react";
@@ -15,6 +16,7 @@ const navItems = [
 ];
 
 const adminNavItems = [
+  { label: "Šablony", icon: Palette, section: "templates", href: "/sablony" },
   { label: "Stav systému", icon: ShieldAlert, section: "readiness", href: "/readiness" },
   { label: "Nastavení", icon: Settings, href: "/#nastaveni" }
 ];
@@ -24,13 +26,16 @@ export async function StudioShell({
   access: providedAccess,
   children
 }: {
-  activeSection?: "today" | "audit" | "readiness";
+  activeSection?: "today" | "audit" | "readiness" | "templates";
   access?: StudioAccessState;
   children: React.ReactNode;
 }) {
   const access = providedAccess ?? (await getStudioAccessState());
   const showAdminNav =
-    access.mode !== "authenticated" || access.role === "owner" || access.role === "admin";
+    access.mode !== "authenticated" ||
+    access.role === "owner" ||
+    access.role === "admin" ||
+    access.role === "designer";
 
   if (access.mode === "locked") {
     return (

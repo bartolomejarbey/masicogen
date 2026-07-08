@@ -25,6 +25,7 @@ export type ProductionDashboardSnapshot = {
   locations: ProductionLocationStatus[];
   canteens: ProductionCanteen[];
   screens: ProductionScreen[];
+  upcomingMenus: UpcomingMenu[];
   counts: {
     locations: number;
     screens: number;
@@ -75,9 +76,17 @@ export type ScreenRow = {
 export type MenuRow = {
   id: string;
   location_id: string;
+  canteen_id: string;
   menu_date: string;
   status: string;
   current_version_id: string | null;
+};
+
+export type UpcomingMenu = {
+  canteenId: string;
+  locationId: string;
+  date: string;
+  status: string;
 };
 
 type CanteenRow = {
@@ -133,7 +142,7 @@ export async function getProductionDashboardSnapshot(
       getDashboardScreens(supabase, orgId),
       supabase
         .from("menus")
-        .select("id, location_id, menu_date, status, current_version_id")
+        .select("id, location_id, canteen_id, menu_date, status, current_version_id")
         .eq("org_id", orgId)
         .gte("menu_date", todayIso)
         .order("menu_date", { ascending: false })
@@ -235,6 +244,12 @@ export function summarizeProductionDashboard(input: {
       name: screen.name,
       status: screen.status,
       currentDeckVersionId: screen.current_deck_version_id
+    })),
+    upcomingMenus: input.menus.map((menu) => ({
+      canteenId: menu.canteen_id,
+      locationId: menu.location_id,
+      date: menu.menu_date,
+      status: menu.status
     })),
     counts: {
       locations: input.locations.length,

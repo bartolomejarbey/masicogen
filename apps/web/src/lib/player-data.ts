@@ -45,6 +45,11 @@ type AssetRow = {
   object_path: string;
 };
 
+// Smyčka na TV běží celý den a při výpadku Wi-Fi drží poslední payload —
+// krátké podpisy by po obnovení spojení nechaly na slidech černé díry.
+const LIVE_ASSET_URL_SECONDS = 60 * 60 * 24;
+const VIDEO_URL_SECONDS = 60 * 60 * 12;
+
 export function playerDataConfigured() {
   return supabaseAdminConfigured();
 }
@@ -58,6 +63,16 @@ export async function getPublishedPlayerPayload(screenId: string): Promise<Playe
   const supabase = getSupabaseAdmin();
   if (!supabase) {
     return null;
+  }
+
+  // Pull-publish: připravený (approved) deck pro dnešní datum se publikuje
+  // líně při dotazu TV — bez cronu, samoopravné po výpadku. Chyba tady nesmí
+  // shodit přehrávání poslední známé verze.
+  const autoPublish = await supabase.rpc("auto_publish_due_deck", {
+    target_screen_id: screenId
+  });
+  if (autoPublish.error) {
+    console.error(`auto_publish_due_deck failed for screen ${screenId}: ${autoPublish.error.message}`);
   }
 
   const { data: screen, error: screenError } = await supabase
@@ -119,7 +134,7 @@ export async function getPublishedPlayerPayload(screenId: string): Promise<Playe
 
   const { data: signedUrl, error: signedUrlError } = await supabase.storage
     .from(exportRow.bucket)
-    .createSignedUrl(exportRow.object_path, 15 * 60);
+    .createSignedUrl(exportRow.object_path, VIDEO_URL_SECONDS);
 
   if (signedUrlError || !signedUrl?.signedUrl) {
     throw new Error(`Export signed URL failed: ${signedUrlError?.message ?? "missing URL"}`);
@@ -219,7 +234,7 @@ async function getAssetSignedUrls(orgId: string, assetIds: string[]) {
     (assets ?? []).map(async (asset) => {
       const { data, error: signedError } = await supabase.storage
         .from(asset.bucket)
-        .createSignedUrl(asset.object_path, 15 * 60);
+        .createSignedUrl(asset.object_path, LIVE_ASSET_URL_SECONDS);
 
       if (signedError || !data?.signedUrl) {
         throw new Error(`Live asset signed URL failed: ${signedError?.message ?? "missing URL"}`);

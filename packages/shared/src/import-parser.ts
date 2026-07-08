@@ -3,6 +3,8 @@ import { type MenuExtractionResult } from "./schemas";
 
 const sectionHints = [
   { id: "soups", name: "Polévky", patterns: [/^pol[ée]vky?$/i, /^soup/i] },
+  { id: "pizza", name: "Pizza dne", patterns: [/^pizza/i] },
+  { id: "buffet", name: "Teplý bufet", patterns: [/bufet|buffet/i, /^tepl[yý]/i] },
   { id: "mains", name: "Hlavní jídla", patterns: [/^hlavn[ií]/i, /^menu$/i, /^j[ií]dla$/i] },
   { id: "specials", name: "Special nabídka", patterns: [/special/i, /akce/i] },
   { id: "desserts", name: "Dezerty", patterns: [/dezert/i, /mou[cč]n/i] }
@@ -101,6 +103,11 @@ function ensureSection(
 }
 
 function detectSection(line: string) {
+  // Řádek s cenou je vždy položka, i když začíná názvem sekce („Pizza Prosciutto 165 Kč").
+  if (/(?:^|\s)\d{2,4}(?:[,.]\d{1,2})?\s*(?:k[cč]|,-)/i.test(line)) {
+    return null;
+  }
+
   const normalized = line.replace(/[:\-]+$/, "").trim();
   return sectionHints.find((hint) => hint.patterns.some((pattern) => pattern.test(normalized))) ?? null;
 }

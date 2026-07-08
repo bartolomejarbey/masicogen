@@ -42,6 +42,7 @@ describe("production studio dashboard summary", () => {
         {
           id: "menu-1",
           location_id: "loc-1",
+          canteen_id: "canteen-1",
           menu_date: "2026-07-06",
           status: "approved",
           current_version_id: "menu-version-1"
@@ -123,6 +124,7 @@ describe("production studio dashboard summary", () => {
         {
           id: "menu-1",
           location_id: "loc-1",
+          canteen_id: "canteen-1",
           menu_date: "2026-07-06",
           status: "approved",
           current_version_id: "menu-version-1"
