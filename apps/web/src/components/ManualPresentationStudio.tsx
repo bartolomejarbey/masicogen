@@ -5,11 +5,17 @@ import {
   MANUAL_PRESENTATION_MAX_SLIDES,
   buildManualPresentationRenderModel,
   createManualPresentationManifest,
+  createManualPresentationSlideItems,
+  getManualPresentationLayout,
+  isBlankManualItem,
+  manualItemSection,
   manualPresentationDocumentSchema,
+  manualPresentationLayouts,
+  padManualSlideItems,
   type ManualPresentationDocument,
-  type ManualPresentationItem,
   type ManualPresentationLayoutId,
-  type ManualPresentationSlide
+  type ManualPresentationSlide,
+  type SectionKey
 } from "@masico/shared";
 import { TvComposition } from "@masico/render";
 import {
@@ -60,7 +66,7 @@ export function ManualPresentationStudio({
   const [activeSaved, setActiveSaved] = useState<SavedManualPresentation | null>(null);
   const [activeSlideId, setActiveSlideId] = useState(initialDocument.slides[0]!.id);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
-  const [mode, setMode] = useState<"content" | "layout">("content");
+  const [layoutMode, setLayoutMode] = useState(false);
   const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -68,9 +74,11 @@ export function ManualPresentationStudio({
   const [message, setMessage] = useState<StudioMessage>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewSlideId, setPreviewSlideId] = useState(activeSlideId);
+  const [slidePickerOpen, setSlidePickerOpen] = useState(false);
   const [photoTargetItemId, setPhotoTargetItemId] = useState<string | null>(null);
   const attemptedAssetIds = useRef(new Set<string>());
 
+  const mode = layoutMode ? "layout" : "content";
   const activeSlide =
     document.slides.find((slide) => slide.id === activeSlideId) ?? document.slides[0]!;
   const activeSlideIndex = document.slides.findIndex((slide) => slide.id === activeSlide.id);
@@ -80,6 +88,26 @@ export function ManualPresentationStudio({
     [assetUrls, previewDocument]
   );
   const photoTarget = activeSlide.items.find((item) => item.id === photoTargetItemId) ?? null;
+  const contextLocked = Boolean(activeSaved);
+  const availableCanteens = canteens.filter(
+    (canteen) => canteen.locationId === document.locationId
+  );
+
+  // Počet viditelných kolonek na aktivním slidu podle skupin — overlay
+  // v režimu rozložení schovává stejné sloty jako TvComposition.
+  const sectionCounts = useMemo(() => {
+    const previewSlide =
+      previewDocument.slides.find((slide) => slide.id === activeSlide.id) ??
+      previewDocument.slides[0]!;
+    const layout = getManualPresentationLayout(previewSlide.baseTemplateId);
+    const counts: Partial<Record<SectionKey, number>> = {};
+    for (const item of previewSlide.items) {
+      if (isBlankManualItem(item)) continue;
+      const key = manualItemSection(item, layout);
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    return counts;
+  }, [activeSlide.id, previewDocument]);
 
   useEffect(() => {
     const missing = collectAssetIds(document).filter(
@@ -142,6 +170,7 @@ export function ManualPresentationStudio({
     setActiveSaved(null);
     setActiveSlideId(next.slides[0]!.id);
     setSelectedLayerId(null);
+    setLayoutMode(false);
     setDirty(false);
     setMessage({ tone: "info", text: "Nová jednorázová prezentace je připravená." });
   }
@@ -150,16 +179,26 @@ export function ManualPresentationStudio({
     if (dirty && !window.confirm("Rozpracované změny nejsou uložené. Opravdu otevřít jinou prezentaci?")) {
       return;
     }
-    const next = structuredClone(presentation.document);
+    const source = structuredClone(presentation.document);
+    // Starší uložené dokumenty mají jen vyplněné položky — doplnit kolonky.
+    const next: ManualPresentationDocument = {
+      ...source,
+      slides: source.slides.map((slide) => ({
+        ...slide,
+        items: padManualSlideItems(slide.items, slide.baseTemplateId)
+      }))
+    };
     setDocument(next);
     setActiveSaved(presentation);
     setActiveSlideId(next.slides[0]!.id);
     setSelectedLayerId(null);
+    setLayoutMode(false);
     setDirty(false);
     setMessage({ tone: "info", text: `Otevřena uložená prezentace „${presentation.name}“.` });
   }
 
-  function addSlide(baseTemplateId: ManualPresentationLayoutId = "mains-grid") {
+  function addSlide(baseTemplateId: ManualPresentationLayoutId) {
+    setSlidePickerOpen(false);
     if (document.slides.length >= MANUAL_PRESENTATION_MAX_SLIDES) return;
     const nextSlide = createClientSlide(baseTemplateId);
     const insertAt = Math.min(activeSlideIndex + 1, document.slides.length);
@@ -205,6 +244,39 @@ export function ManualPresentationStudio({
     const [moved] = slides.splice(activeSlideIndex, 1);
     slides.splice(nextIndex, 0, moved!);
     commit({ ...document, slides });
+  }
+
+  function changeSlideLayout(layoutId: ManualPresentationLayoutId) {
+    if (layoutId === activeSlide.baseTemplateId) return;
+    const filled = activeSlide.items.filter((item) => !isBlankManualItem(item));
+    const slots = createManualPresentationSlideItems(layoutId);
+    const baseline = createManualPresentationManifest(activeSlide.baseTemplateId, activeSlide.id);
+    const customized = JSON.stringify(activeSlide.manifest) !== JSON.stringify(baseline);
+    const dropped = Math.max(0, filled.length - slots.length);
+
+    if (
+      (customized || dropped > 0) &&
+      !window.confirm(
+        dropped > 0
+          ? `Nový typ slidu má méně kolonek — ${dropped} jídel se nevejde a smaže se. Pokračovat?`
+          : "Změna typu slidu vrátí prvky na výchozí pozice. Pokračovat?"
+      )
+    ) {
+      return;
+    }
+
+    // Vyplněná jídla přetečou do kolonek nového slidu v původním pořadí.
+    filled.slice(0, slots.length).forEach((item, index) => {
+      slots[index] = { ...item, sectionKey: slots[index]!.sectionKey };
+    });
+
+    updateActiveSlide({
+      ...activeSlide,
+      baseTemplateId: layoutId,
+      manifest: createManualPresentationManifest(layoutId, activeSlide.id),
+      items: slots
+    });
+    setSelectedLayerId(null);
   }
 
   async function saveLongTerm() {
@@ -257,7 +329,6 @@ export function ManualPresentationStudio({
         ...current.filter((presentation) => presentation.deckId !== saved.deckId)
       ]);
       setActiveSaved(saved);
-      setDocument(saved.document);
       setDirty(false);
       setMessage({
         tone: "ok",
@@ -397,10 +468,10 @@ export function ManualPresentationStudio({
       <header className="manual-presentation-head">
         <div>
           <p className="eyebrow">Ruční prezentace</p>
-          <h1 className="page-title">Prezentace a PDF bez přepisování šablon</h1>
+          <h1 className="page-title">Slidy denní smyčky, vyplněné ručně</h1>
           <p className="page-copy">
-            Každý slide má vlastní texty, jídla, ceny, alergeny, fotografie i rozložení.
-            Výsledek vidíte živě před jednorázovým PDF nebo dlouhodobým uložením.
+            Vyberte typ slidu a vyplňte jeho kolonky — nevyplněné se na slidu schovají.
+            Výsledek uložíte jednorázově do PDF, nebo dlouhodobě jako verzi.
           </p>
         </div>
         <div className="manual-head-actions">
@@ -452,26 +523,76 @@ export function ManualPresentationStudio({
         </div>
       ) : null}
 
-      <section className="manual-saved-bar" aria-label="Dlouhodobě uložené prezentace">
-        <div>
-          <strong>Dlouhodobě uložené</strong>
-          <span>{presentations.length} aktivních prezentací</span>
-        </div>
-        <select
-          aria-label="Otevřít uloženou prezentaci"
-          onChange={(event) => {
-            const presentation = presentations.find((candidate) => candidate.deckId === event.target.value);
-            if (presentation) openSaved(presentation);
-          }}
-          value={activeSaved?.deckId ?? ""}
-        >
-          <option value="">Vyberte uloženou prezentaci…</option>
-          {presentations.map((presentation) => (
-            <option key={presentation.deckId} value={presentation.deckId}>
-              {presentation.name} · {formatSavedDate(presentation.updatedAt)}
-            </option>
-          ))}
-        </select>
+      <section className="manual-context-bar card" aria-label="Nastavení prezentace">
+        <label>
+          Název prezentace
+          <input
+            maxLength={140}
+            onChange={(event) => commit({ ...document, name: event.target.value })}
+            value={document.name}
+          />
+        </label>
+        <label>
+          Datum na slidech
+          <input
+            onChange={(event) => commit({ ...document, presentationDate: event.target.value })}
+            type="date"
+            value={document.presentationDate}
+          />
+        </label>
+        <label>
+          Provozovna
+          <select
+            disabled={contextLocked}
+            onChange={(event) => {
+              const locationId = event.target.value;
+              const canteenId = canteens.find((canteen) => canteen.locationId === locationId)?.id;
+              if (!canteenId) return;
+              commit({ ...document, locationId, canteenId });
+            }}
+            title={contextLocked ? "U uložené prezentace zůstává provozovna stejná." : undefined}
+            value={document.locationId}
+          >
+            {locations.map((location) => (
+              <option key={location.id} value={location.id}>
+                {location.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Jídelna
+          <select
+            disabled={contextLocked}
+            onChange={(event) => commit({ ...document, canteenId: event.target.value })}
+            value={document.canteenId}
+          >
+            {availableCanteens.map((canteen) => (
+              <option key={canteen.id} value={canteen.id}>
+                {canteen.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="manual-saved-select">
+          Uložené prezentace ({presentations.length})
+          <select
+            onChange={(event) => {
+              const presentation = presentations.find(
+                (candidate) => candidate.deckId === event.target.value
+              );
+              if (presentation) openSaved(presentation);
+            }}
+            value={activeSaved?.deckId ?? ""}
+          >
+            <option value="">Otevřít uloženou…</option>
+            {presentations.map((presentation) => (
+              <option key={presentation.deckId} value={presentation.deckId}>
+                {presentation.name} · {formatSavedDate(presentation.updatedAt)}
+              </option>
+            ))}
+          </select>
+        </label>
         {activeSaved ? (
           <button className="button compact" disabled={saving} onClick={() => void archiveSaved()} type="button">
             <Archive aria-hidden="true" size={17} />
@@ -484,15 +605,41 @@ export function ManualPresentationStudio({
         <aside className="manual-slide-rail card" aria-label="Slidy prezentace">
           <div className="manual-slide-rail-head">
             <strong>Slidy</strong>
-            <button
-              aria-label="Přidat slide"
-              className="icon-button"
-              disabled={document.slides.length >= MANUAL_PRESENTATION_MAX_SLIDES}
-              onClick={() => addSlide()}
-              type="button"
-            >
-              <Plus aria-hidden="true" size={19} />
-            </button>
+            <div className="manual-add-slide">
+              <button
+                aria-expanded={slidePickerOpen}
+                aria-label="Přidat slide"
+                className="icon-button"
+                disabled={document.slides.length >= MANUAL_PRESENTATION_MAX_SLIDES}
+                onClick={() => setSlidePickerOpen((open) => !open)}
+                type="button"
+              >
+                <Plus aria-hidden="true" size={19} />
+              </button>
+              {slidePickerOpen ? (
+                <>
+                  <div
+                    aria-hidden="true"
+                    className="manual-picker-backdrop"
+                    onClick={() => setSlidePickerOpen(false)}
+                  />
+                  <div className="manual-slide-picker card" role="menu">
+                    <p className="eyebrow">Jaký slide přidat?</p>
+                    {manualPresentationLayouts.map((layout) => (
+                      <button
+                        key={layout.id}
+                        onClick={() => addSlide(layout.id)}
+                        role="menuitem"
+                        type="button"
+                      >
+                        <strong>{layout.label}</strong>
+                        <span>{layout.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </div>
           </div>
           <div className="manual-slide-list">
             {document.slides.map((slide, index) => (
@@ -516,6 +663,7 @@ export function ManualPresentationStudio({
                   </div>
                 </div>
                 <strong>{slide.title || `Slide ${index + 1}`}</strong>
+                <small>{getManualPresentationLayout(slide.baseTemplateId).label}</small>
               </button>
             ))}
           </div>
@@ -550,25 +698,18 @@ export function ManualPresentationStudio({
         </aside>
 
         <main className="manual-stage-column">
-          <div className="manual-mode-switch" role="radiogroup" aria-label="Režim editoru">
+          <div className="manual-stage-head">
+            <strong>{getManualPresentationLayout(activeSlide.baseTemplateId).label}</strong>
             <button
-              aria-checked={mode === "content"}
-              className={mode === "content" ? "active" : ""}
-              onClick={() => setMode("content")}
-              role="radio"
+              aria-pressed={layoutMode}
+              className={`manual-layout-toggle ${layoutMode ? "active" : ""}`}
+              onClick={() => {
+                setLayoutMode((current) => !current);
+                setSelectedLayerId(null);
+              }}
               type="button"
             >
-              <LayoutTemplate aria-hidden="true" size={19} />
-              Obsah a fotografie
-            </button>
-            <button
-              aria-checked={mode === "layout"}
-              className={mode === "layout" ? "active" : ""}
-              onClick={() => setMode("layout")}
-              role="radio"
-              type="button"
-            >
-              <Move aria-hidden="true" size={19} />
+              <Move aria-hidden="true" size={17} />
               Přesouvat prvky
             </button>
           </div>
@@ -576,30 +717,26 @@ export function ManualPresentationStudio({
             <ManualPresentationCanvas
               activeSlideId={activeSlide.id}
               deck={renderModel.deck}
-              itemCount={activeSlide.items.length}
               manifest={activeSlide.manifest}
               menu={renderModel.menu}
               mode={mode}
               onManifestChange={(manifest) => updateActiveSlide({ ...activeSlide, manifest })}
               onSelectLayer={setSelectedLayerId}
+              sectionCounts={sectionCounts}
               selectedLayerId={selectedLayerId}
             />
           </div>
-          <p className="manual-stage-help">
-            {mode === "layout"
-              ? "Klikněte na prvek a táhněte ho. Úchopy mění velikost; brandové prvky zůstávají zamčené."
-              : "Vpravo upravujte texty, ceny, alergeny a fotky. Náhled se mění okamžitě."}
-          </p>
+          {layoutMode ? (
+            <p className="manual-stage-help">
+              Klikněte na prvek a táhněte ho. Úchopy mění velikost; brandové prvky zůstávají zamčené.
+            </p>
+          ) : null}
         </main>
 
         <ManualPresentationInspector
           assetUrls={assetUrls}
-          canteens={canteens}
-          contextLocked={Boolean(activeSaved)}
-          document={document}
-          locations={locations}
           mode={mode}
-          onDocumentChange={commit}
+          onChangeLayout={changeSlideLayout}
           onRequestPhoto={setPhotoTargetItemId}
           onSlideChange={updateActiveSlide}
           selectedLayerId={selectedLayerId}
@@ -681,30 +818,16 @@ export function ManualPresentationStudio({
   );
 }
 
-function createClientSlide(
-  baseTemplateId: ManualPresentationLayoutId = "mains-grid"
-): ManualPresentationSlide {
+function createClientSlide(baseTemplateId: ManualPresentationLayoutId): ManualPresentationSlide {
   const id = crypto.randomUUID();
+  const layout = getManualPresentationLayout(baseTemplateId);
   return {
     id,
-    title: "Nový slide",
+    title: layout.label,
     baseTemplateId,
     durationSeconds: 10,
     manifest: createManualPresentationManifest(baseTemplateId, id),
-    items: [createClientItem()]
-  };
-}
-
-function createClientItem(): ManualPresentationItem {
-  return {
-    id: crypto.randomUUID(),
-    name: "Nová položka",
-    description: "",
-    priceCzk: null,
-    allergens: [],
-    photoAssetId: null,
-    photoFocalPoint: { x: 0.5, y: 0.5 },
-    photoSource: null
+    items: createManualPresentationSlideItems(baseTemplateId)
   };
 }
 
@@ -713,7 +836,7 @@ function createNewDocument(
   locationId: string,
   canteenId: string
 ): ManualPresentationDocument {
-  const slide = createClientSlide();
+  const slide = createClientSlide("masico-intro");
   return {
     ...structuredClone(template),
     id: crypto.randomUUID(),
@@ -724,6 +847,11 @@ function createNewDocument(
   };
 }
 
+/**
+ * Náhled nesmí nikdy spadnout na validaci: dosadí náhradní název/datum,
+ * srovná ceny do povoleného rozsahu a slidu bez jediného vyplněného jídla
+ * dá do první kolonky výzvu, ať má TvComposition co vykreslit.
+ */
 function makePreviewSafe(document: ManualPresentationDocument): ManualPresentationDocument {
   return {
     ...document,
@@ -731,18 +859,23 @@ function makePreviewSafe(document: ManualPresentationDocument): ManualPresentati
     presentationDate: /^\d{4}-\d{2}-\d{2}$/.test(document.presentationDate)
       ? document.presentationDate
       : new Date().toISOString().slice(0, 10),
-    slides: document.slides.map((slide, slideIndex) => ({
-      ...slide,
-      title: slide.title.trim() || `Slide ${slideIndex + 1}`,
-      items: slide.items.map((item, itemIndex) => ({
+    slides: document.slides.map((slide, slideIndex) => {
+      const items = slide.items.map((item) => ({
         ...item,
-        name: item.name.trim() || `Položka ${itemIndex + 1}`,
         priceCzk:
           item.priceCzk === null || !Number.isFinite(item.priceCzk)
             ? null
             : Math.min(1_000_000, Math.max(0, Math.round(item.priceCzk)))
-      }))
-    }))
+      }));
+      if (items.length > 0 && items.every(isBlankManualItem)) {
+        items[0] = { ...items[0]!, name: "Doplňte jídlo…" };
+      }
+      return {
+        ...slide,
+        title: slide.title.trim() || `Slide ${slideIndex + 1}`,
+        items
+      };
+    })
   };
 }
 

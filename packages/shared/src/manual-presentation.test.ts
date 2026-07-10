@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   buildManualPresentationRenderModel,
   createManualPresentationManifest,
+  createManualPresentationSlideItems,
   manualPresentationDocumentSchema,
   manualPresentationSourceText,
-  type ManualPresentationDocument
+  padManualSlideItems,
+  type ManualPresentationDocument,
+  type ManualPresentationItem
 } from "./manual-presentation";
 
 const locationId = "11111111-1111-4111-8111-111111111111";
@@ -14,6 +17,19 @@ const firstSlideId = "55555555-5555-4555-8555-555555555555";
 const secondSlideId = "66666666-6666-4666-8666-666666666666";
 const firstItemId = "77777777-7777-4777-8777-777777777777";
 const secondItemId = "88888888-8888-4888-8888-888888888888";
+
+function item(overrides: Partial<ManualPresentationItem> & { id: string }): ManualPresentationItem {
+  return {
+    name: "",
+    description: "",
+    priceCzk: null,
+    allergens: [],
+    photoAssetId: null,
+    photoFocalPoint: { x: 0.5, y: 0.5 },
+    photoSource: null,
+    ...overrides
+  };
+}
 
 function documentFixture(): ManualPresentationDocument {
   return {
@@ -31,7 +47,7 @@ function documentFixture(): ManualPresentationDocument {
         durationSeconds: 10,
         manifest: createManualPresentationManifest("mains-grid", firstSlideId),
         items: [
-          {
+          item({
             id: firstItemId,
             name: "Kuřecí řízek",
             description: "bramborová kaše",
@@ -40,7 +56,7 @@ function documentFixture(): ManualPresentationDocument {
             photoAssetId,
             photoFocalPoint: { x: 0.4, y: 0.6 },
             photoSource: "upload"
-          }
+          })
         ]
       },
       {
@@ -50,16 +66,12 @@ function documentFixture(): ManualPresentationDocument {
         durationSeconds: 8,
         manifest: createManualPresentationManifest("special-day", secondSlideId),
         items: [
-          {
+          item({
             id: secondItemId,
             name: "Jablečný štrúdl",
-            description: "",
             priceCzk: 49,
-            allergens: ["1", "3"],
-            photoAssetId: null,
-            photoFocalPoint: { x: 0.5, y: 0.5 },
-            photoSource: null
-          }
+            allergens: ["1", "3"]
+          })
         ]
       }
     ]
@@ -84,23 +96,79 @@ describe("manual presentation", () => {
     expect(menu.sections.flatMap((section) => section.items)).toHaveLength(2);
   });
 
-  it("rejects a slide that exceeds the selected layout capacity", () => {
+  it("supports the multi-group day overview slide and skips blank slots", () => {
+    const slideId = "99999999-9999-4999-8999-999999999990";
+    const items = createManualPresentationSlideItems("masico-intro");
+    // 2 polévky + 5 hlavních + 1 menu dne = 8 kolonek
+    expect(items).toHaveLength(8);
+
+    items[0]!.name = "Hovězí vývar";
+    items[0]!.priceCzk = 39;
+    items[2]!.name = "Svíčková";
+    items[2]!.priceCzk = 169;
+    items[7]!.name = "Menu dne: řízek + kaše";
+    items[7]!.priceCzk = 149;
+
+    const document: ManualPresentationDocument = {
+      ...documentFixture(),
+      slides: [
+        {
+          id: slideId,
+          title: "Denní menu",
+          baseTemplateId: "masico-intro",
+          durationSeconds: 12,
+          manifest: createManualPresentationManifest("masico-intro", slideId),
+          items
+        }
+      ]
+    };
+
+    const { deck, menu } = buildManualPresentationRenderModel(document);
+    // Jen vyplněné kolonky — prázdné sloty TvComposition schová.
+    expect(deck.slides[0]?.menuItemIds).toHaveLength(3);
+    const byId = new Map(menu.sections.map((section) => [section.id, section]));
+    expect(byId.get("soups")?.items.map((i) => i.name)).toEqual(["Hovězí vývar"]);
+    expect(byId.get("mains")?.items.map((i) => i.name)).toEqual(["Svíčková"]);
+    expect(byId.get("special")?.items.map((i) => i.name)).toEqual(["Menu dne: řízek + kaše"]);
+  });
+
+  it("rejects a slide whose group exceeds the slot capacity", () => {
     const document = documentFixture();
-    const item = document.slides[1]!.items[0]!;
+    const base = document.slides[1]!.items[0]!;
     document.slides[1]!.items = [
-      item,
-      { ...item, id: "99999999-9999-4999-8999-999999999991" },
-      { ...item, id: "99999999-9999-4999-8999-999999999992" },
-      { ...item, id: "99999999-9999-4999-8999-999999999993" }
+      base,
+      { ...base, id: "99999999-9999-4999-8999-999999999991" },
+      { ...base, id: "99999999-9999-4999-8999-999999999992" },
+      { ...base, id: "99999999-9999-4999-8999-999999999993" }
     ];
 
     expect(manualPresentationDocumentSchema.safeParse(document).success).toBe(false);
   });
 
-  it("creates an auditable source text snapshot", () => {
-    expect(manualPresentationSourceText(documentFixture())).toContain(
-      "Kuřecí řízek | 159 Kč | alergeny 1,3,7"
-    );
+  it("rejects a slide with no filled item", () => {
+    const document = documentFixture();
+    document.slides[0]!.items = [item({ id: firstItemId, sectionKey: "mains" })];
+
+    expect(manualPresentationDocumentSchema.safeParse(document).success).toBe(false);
+  });
+
+  it("pads legacy slides to the full slot count and keeps filled items first", () => {
+    const legacy = documentFixture().slides[0]!;
+    const padded = padManualSlideItems(legacy.items, "mains-grid");
+
+    expect(padded).toHaveLength(5);
+    expect(padded[0]?.id).toBe(firstItemId);
+    expect(padded[0]?.sectionKey).toBe("mains");
+    expect(padded.slice(1).every((slot) => slot.name === "")).toBe(true);
+  });
+
+  it("creates an auditable source text snapshot without blank slots", () => {
+    const document = documentFixture();
+    document.slides[0]!.items = padManualSlideItems(document.slides[0]!.items, "mains-grid");
+    const text = manualPresentationSourceText(document);
+
+    expect(text).toContain("Kuřecí řízek | 159 Kč | alergeny 1,3,7");
+    expect(text).not.toContain("| bez ceny | alergeny bez alergenů\n | ");
   });
 
   it("rejects a non-integer or out-of-range price", () => {

@@ -7,6 +7,7 @@ import type {
   DeckManifest,
   LayerFrame,
   MenuExtractionResult,
+  SectionKey,
   TemplateLayerV2,
   TemplateManifestV2
 } from "@masico/shared";
@@ -30,7 +31,7 @@ export function ManualPresentationCanvas({
   menu,
   activeSlideId,
   manifest,
-  itemCount,
+  sectionCounts,
   mode,
   selectedLayerId,
   onSelectLayer,
@@ -40,7 +41,8 @@ export function ManualPresentationCanvas({
   menu: MenuExtractionResult;
   activeSlideId: string;
   manifest: TemplateManifestV2;
-  itemCount: number;
+  /** Počet vyplněných kolonek podle skupin — overlay schová stejné sloty jako TvComposition. */
+  sectionCounts: Partial<Record<SectionKey, number>>;
   mode: "content" | "layout";
   selectedLayerId: string | null;
   onSelectLayer: (layerId: string | null) => void;
@@ -49,23 +51,16 @@ export function ManualPresentationCanvas({
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const sortedLayers = [...manifest.layers].sort((left, right) => left.frame.zIndex - right.frame.zIndex);
+  const isEmptySlot = (layer: TemplateLayerV2) =>
+    "binding" in layer &&
+    layer.binding?.source === "item" &&
+    layer.binding.index >= (sectionCounts[layer.binding.sectionKey] ?? 0);
   const hiddenGroups = new Set(
-    sortedLayers.flatMap((layer) =>
-      "binding" in layer &&
-      layer.binding?.source === "item" &&
-      layer.binding.index >= itemCount &&
-      layer.group
-        ? [layer.group]
-        : []
-    )
+    sortedLayers.flatMap((layer) => (isEmptySlot(layer) && layer.group ? [layer.group] : []))
   );
   const overlayLayers = sortedLayers.filter((layer) => {
     if (layer.group && hiddenGroups.has(layer.group)) return false;
-    return !(
-      "binding" in layer &&
-      layer.binding?.source === "item" &&
-      layer.binding.index >= itemCount
-    );
+    return !isEmptySlot(layer);
   });
 
   function beginDrag(
@@ -122,14 +117,16 @@ export function ManualPresentationCanvas({
             menu={menu}
             showSafeArea={mode === "layout"}
           />
-          <div
-            className={`manual-layer-overlay ${mode}`}
-            onPointerCancel={finishDrag}
-            onPointerDown={() => onSelectLayer(null)}
-            onPointerMove={handlePointerMove}
-            onPointerUp={finishDrag}
-            ref={overlayRef}
-          >
+          {/* V režimu obsahu je náhled čistý — bez klikacích rámečků a štítků. */}
+          {mode === "layout" ? (
+            <div
+              className={`manual-layer-overlay ${mode}`}
+              onPointerCancel={finishDrag}
+              onPointerDown={() => onSelectLayer(null)}
+              onPointerMove={handlePointerMove}
+              onPointerUp={finishDrag}
+              ref={overlayRef}
+            >
             {overlayLayers.map((layer) => {
               const selected = selectedLayerId === layer.id;
               return (
@@ -175,19 +172,28 @@ export function ManualPresentationCanvas({
                 </div>
               );
             })}
-          </div>
+            </div>
+          ) : null}
         </div>
       </ScaledTvFrame>
     </div>
   );
 }
 
+const manualSlotLabels: Record<string, string> = {
+  soups: "Polévka",
+  mains: "Hlavní jídlo",
+  pizza: "Pizza",
+  buffet: "Položka bufetu",
+  special: "Nabídka"
+};
+
 export function manualLayerLabel(layer: TemplateLayerV2) {
   if (layer.type === "logo") return "Logo";
   if (layer.type === "shape") return "Podklad";
   if (layer.type === "image") {
     return layer.binding?.source === "item"
-      ? `Fotka ${layer.binding.index + 1}`
+      ? `Fotka · ${manualSlotLabels[layer.binding.sectionKey] ?? "Položka"} ${layer.binding.index + 1}`
       : "Obrázek";
   }
   if (layer.binding?.source === "item") {
@@ -198,7 +204,8 @@ export function manualLayerLabel(layer: TemplateLayerV2) {
       allergens: "Alergeny",
       photo: "Fotka"
     };
-    return `${fields[layer.binding.field]} ${layer.binding.index + 1}`;
+    const slot = manualSlotLabels[layer.binding.sectionKey] ?? "Položka";
+    return `${fields[layer.binding.field]} · ${slot} ${layer.binding.index + 1}`;
   }
   if (layer.binding?.source === "menu") {
     return layer.binding.field === "date" ? "Datum" : "Nadpis";

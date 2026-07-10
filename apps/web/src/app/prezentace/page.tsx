@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   createManualPresentationManifest,
+  createManualPresentationSlideItems,
   type ManualPresentationDocument
 } from "@masico/shared";
 import { ManualPresentationStudio } from "@/components/ManualPresentationStudio";
@@ -86,22 +87,11 @@ function createInitialDocument(
     slides: [
       {
         id: slideId,
-        title: "Dnešní nabídka",
-        baseTemplateId: "mains-grid",
+        title: "Denní menu",
+        baseTemplateId: "masico-intro",
         durationSeconds: 10,
-        manifest: createManualPresentationManifest("mains-grid", slideId),
-        items: [
-          {
-            id: randomUUID(),
-            name: "Nová položka",
-            description: "",
-            priceCzk: null,
-            allergens: [],
-            photoAssetId: null,
-            photoFocalPoint: { x: 0.5, y: 0.5 },
-            photoSource: null
-          }
-        ]
+        manifest: createManualPresentationManifest("masico-intro", slideId),
+        items: createManualPresentationSlideItems("masico-intro")
       }
     ]
   };

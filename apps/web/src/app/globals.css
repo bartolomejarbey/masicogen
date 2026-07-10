@@ -4215,10 +4215,12 @@ a {
   background: rgba(39, 106, 134, 0.08);
 }
 
-.manual-saved-bar {
+/* Jeden kompaktní pruh s nastavením celé prezentace — místo samostatné
+   sekce v inspektoru, ať pravý panel patří jen aktivnímu slidu. */
+.manual-context-bar {
   display: grid;
-  grid-template-columns: minmax(190px, auto) minmax(260px, 520px) auto;
-  align-items: center;
+  grid-template-columns: minmax(200px, 1.3fr) 165px minmax(150px, 1fr) minmax(150px, 1fr) minmax(210px, 1.2fr) auto;
+  align-items: end;
   gap: 12px;
   border: 1px solid var(--border);
   border-radius: 9px;
@@ -4226,23 +4228,33 @@ a {
   background: var(--surface);
 }
 
-.manual-saved-bar > div {
+.manual-context-bar label {
   display: grid;
-  gap: 2px;
-}
-
-.manual-saved-bar span {
-  color: var(--muted);
+  min-width: 0;
+  gap: 5px;
+  color: var(--text);
   font-size: 13px;
+  font-weight: 800;
 }
 
-.manual-saved-bar select {
+.manual-context-bar input,
+.manual-context-bar select {
   width: 100%;
   min-height: 44px;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0 11px;
+  color: var(--text);
   background: #fff;
+}
+
+.manual-context-bar select:disabled {
+  color: var(--muted);
+  background: #f4efe9;
+}
+
+.manual-context-bar .button.compact {
+  margin-bottom: 1px;
 }
 
 .manual-studio-grid {
@@ -4338,6 +4350,16 @@ a {
   white-space: nowrap;
 }
 
+.manual-slide-thumb small {
+  overflow: hidden;
+  margin-top: -4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .manual-thumb-viewport {
   position: relative;
   width: 144px;
@@ -4361,26 +4383,32 @@ a {
   gap: 10px;
 }
 
-.manual-mode-switch {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+.manual-stage-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.manual-mode-switch button {
+.manual-stage-head > strong {
+  font-size: 15px;
+}
+
+.manual-layout-toggle {
   display: inline-flex;
-  min-height: 44px;
+  min-height: 40px;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  gap: 7px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 999px;
+  padding: 0 14px;
   color: var(--muted);
   background: #fff;
+  font-size: 13px;
   font-weight: 800;
 }
 
-.manual-mode-switch button.active {
+.manual-layout-toggle.active {
   border-color: var(--red);
   color: var(--red);
   background: rgba(183, 28, 28, 0.06);
@@ -4533,21 +4561,6 @@ a {
   line-height: 1.4;
 }
 
-.manual-color-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.manual-color-row input[type="color"] {
-  width: 52px;
-  height: 42px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 3px;
-  background: #fff;
-}
-
 .manual-two-columns,
 .manual-frame-grid {
   display: grid;
@@ -4589,44 +4602,137 @@ a {
   background: #fbf8f3;
 }
 
+/* Nevyplněná kolonka: jen řádek s názvem, opticky utlumená. */
+.manual-item-card.blank {
+  gap: 6px;
+  border-style: dashed;
+  padding: 8px 11px;
+  background: transparent;
+}
+
+.manual-item-card.blank .manual-item-card-head strong {
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .manual-item-card-head .icon-button {
   width: 34px;
   height: 34px;
 }
 
-.manual-allergens {
+.manual-slide-meta-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 84px;
+  gap: 10px;
+  align-items: end;
+}
+
+.manual-slide-meta-row input[type="color"] {
+  width: 100%;
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 3px;
+  background: #fff;
+}
+
+.manual-add-slide {
+  position: relative;
+}
+
+.manual-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.manual-slide-picker {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 41;
+  display: grid;
+  width: 300px;
+  gap: 4px;
+  padding: 10px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+}
+
+.manual-slide-picker .eyebrow {
+  margin: 0 0 4px;
+}
+
+.manual-slide-picker button {
+  display: grid;
+  gap: 2px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+}
+
+.manual-slide-picker button:hover {
+  border-color: var(--border);
+  background: #fbf8f3;
+}
+
+.manual-slide-picker button strong {
+  font-size: 14px;
+}
+
+.manual-slide-picker button span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.manual-item-row {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.manual-price-field input {
+  min-height: 40px;
+}
+
+.manual-allergen-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   margin: 0;
   border: 0;
   padding: 0;
 }
 
-.manual-allergens legend {
+.manual-allergen-chips legend {
   width: 100%;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
   font-size: 14px;
   font-weight: 800;
 }
 
-.manual-allergens label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.manual-allergen-chips button {
+  display: grid;
+  min-width: 30px;
+  height: 30px;
+  place-items: center;
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 5px 8px;
+  padding: 0 7px;
+  color: var(--muted);
   background: #fff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 850;
-  cursor: pointer;
 }
 
-.manual-allergens label:has(input:checked) {
+.manual-allergen-chips button.active {
   border-color: var(--red);
-  color: var(--red);
-  background: rgba(183, 28, 28, 0.07);
+  color: #fff;
+  background: var(--red);
 }
 
 .manual-photo-field {
@@ -4837,9 +4943,16 @@ a {
   }
 }
 
+@media (max-width: 1200px) {
+  .manual-context-bar {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    align-items: end;
+  }
+}
+
 @media (max-width: 900px) {
   .manual-presentation-head,
-  .manual-saved-bar {
+  .manual-context-bar {
     display: grid;
     grid-template-columns: 1fr;
   }
@@ -4874,7 +4987,7 @@ a {
     width: 100%;
   }
 
-  .manual-mode-switch,
+  .manual-item-row,
   .manual-two-columns,
   .manual-frame-grid,
   .manual-photo-toolbar {

@@ -2,49 +2,40 @@
 
 import {
   allergenCatalog,
-  createManualPresentationManifest,
   getManualPresentationLayout,
+  isBlankManualItem,
+  manualItemSection,
   manualPresentationLayouts,
   type AllergenCode,
-  type ManualPresentationDocument,
   type ManualPresentationItem,
   type ManualPresentationLayoutId,
   type ManualPresentationSlide,
+  type ManualPresentationSlotGroup,
   type TemplateLayerV2
 } from "@masico/shared";
-import { Camera, ImageOff, Plus, Trash2 } from "lucide-react";
+import { Camera, Eraser, ImageOff } from "lucide-react";
 import Image from "next/image";
-import type { PresentationCanteen, PresentationLocation } from "@/lib/manual-presentations";
 import { manualLayerLabel } from "./ManualPresentationCanvas";
 
 export function ManualPresentationInspector({
-  document,
   slide,
   mode,
   selectedLayerId,
   assetUrls,
-  locations,
-  canteens,
-  contextLocked,
-  onDocumentChange,
   onSlideChange,
+  onChangeLayout,
   onRequestPhoto
 }: {
-  document: ManualPresentationDocument;
   slide: ManualPresentationSlide;
   mode: "content" | "layout";
   selectedLayerId: string | null;
   assetUrls: Record<string, string>;
-  locations: PresentationLocation[];
-  canteens: PresentationCanteen[];
-  contextLocked: boolean;
-  onDocumentChange: (document: ManualPresentationDocument) => void;
   onSlideChange: (slide: ManualPresentationSlide) => void;
+  onChangeLayout: (layoutId: ManualPresentationLayoutId) => void;
   onRequestPhoto: (itemId: string) => void;
 }) {
   const selectedLayer = slide.manifest.layers.find((layer) => layer.id === selectedLayerId) ?? null;
   const layout = getManualPresentationLayout(slide.baseTemplateId);
-  const availableCanteens = canteens.filter((canteen) => canteen.locationId === document.locationId);
 
   function updateItem(itemId: string, patch: Partial<ManualPresentationItem>) {
     onSlideChange({
@@ -66,104 +57,19 @@ export function ManualPresentationInspector({
     });
   }
 
-  function changeLayout(baseTemplateId: ManualPresentationLayoutId) {
-    if (baseTemplateId === slide.baseTemplateId) {
-      return;
-    }
-    const nextLayout = getManualPresentationLayout(baseTemplateId);
-    const baseline = createManualPresentationManifest(slide.baseTemplateId, slide.id);
-    const customized =
-      slide.items.length > nextLayout.capacity ||
-      JSON.stringify(slide.manifest) !== JSON.stringify(baseline);
-    if (
-      customized &&
-      !window.confirm(
-        "Změna rozložení vrátí prvky na výchozí pozice a jídla nad kapacitu nového rozložení odebere. Pokračovat?"
-      )
-    ) {
-      return;
-    }
-    onSlideChange({
-      ...slide,
-      baseTemplateId,
-      manifest: createManualPresentationManifest(baseTemplateId, slide.id),
-      items: slide.items.slice(0, nextLayout.capacity)
-    });
-  }
-
   return (
     <aside className="manual-inspector card">
       <section className="manual-inspector-section">
-        <p className="eyebrow">Celá prezentace</p>
+        <p className="eyebrow">Slide</p>
         <label>
-          Název prezentace
-          <input
-            maxLength={140}
-            onChange={(event) => onDocumentChange({ ...document, name: event.target.value })}
-            value={document.name}
-          />
-        </label>
-        <label>
-          Datum na slidech
-          <input
-            onChange={(event) =>
-              onDocumentChange({ ...document, presentationDate: event.target.value })
-            }
-            type="date"
-            value={document.presentationDate}
-          />
-        </label>
-        <label>
-          Provozovna
+          Typ slidu
           <select
-            disabled={contextLocked}
-            onChange={(event) => {
-              const locationId = event.target.value;
-              const canteenId = canteens.find((canteen) => canteen.locationId === locationId)?.id;
-              if (!canteenId) return;
-              onDocumentChange({ ...document, locationId, canteenId });
-            }}
-            value={document.locationId}
-          >
-            {locations.map((location) => (
-              <option key={location.id} value={location.id}>
-                {location.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Jídelna
-          <select
-            disabled={contextLocked}
-            onChange={(event) =>
-              onDocumentChange({ ...document, canteenId: event.target.value })
-            }
-            value={document.canteenId}
-          >
-            {availableCanteens.map((canteen) => (
-              <option key={canteen.id} value={canteen.id}>
-                {canteen.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {contextLocked ? (
-          <small>U uložené prezentace zůstává provozovna kvůli historii verzí stejná.</small>
-        ) : null}
-      </section>
-
-      <section className="manual-inspector-section">
-        <p className="eyebrow">Aktivní slide</p>
-        <label>
-          Typ rozložení
-          <select
-            onChange={(event) => changeLayout(event.target.value as ManualPresentationLayoutId)}
+            onChange={(event) => onChangeLayout(event.target.value as ManualPresentationLayoutId)}
             value={slide.baseTemplateId}
           >
             {manualPresentationLayouts.map((candidate) => (
               <option key={candidate.id} value={candidate.id}>
-                {candidate.label} · max. {candidate.capacity}
+                {candidate.label}
               </option>
             ))}
           </select>
@@ -177,21 +83,21 @@ export function ManualPresentationInspector({
             value={slide.title}
           />
         </label>
-        <label>
-          Délka na TV: {slide.durationSeconds} s
-          <input
-            max={60}
-            min={3}
-            onChange={(event) =>
-              onSlideChange({ ...slide, durationSeconds: Number(event.target.value) })
-            }
-            type="range"
-            value={slide.durationSeconds}
-          />
-        </label>
-        <label>
-          Barva pozadí
-          <span className="manual-color-row">
+        <div className="manual-slide-meta-row">
+          <label>
+            Na TV: {slide.durationSeconds} s
+            <input
+              max={60}
+              min={3}
+              onChange={(event) =>
+                onSlideChange({ ...slide, durationSeconds: Number(event.target.value) })
+              }
+              type="range"
+              value={slide.durationSeconds}
+            />
+          </label>
+          <label>
+            Pozadí
             <input
               aria-label="Barva pozadí slidu"
               onChange={(event) =>
@@ -203,9 +109,8 @@ export function ManualPresentationInspector({
               type="color"
               value={slide.manifest.backgroundColor}
             />
-            <code>{slide.manifest.backgroundColor}</code>
-          </span>
-        </label>
+          </label>
+        </div>
       </section>
 
       {mode === "layout" ? (
@@ -213,196 +118,249 @@ export function ManualPresentationInspector({
       ) : (
         <>
           <StaticTextFields slide={slide} onSlideChange={onSlideChange} />
-          <section className="manual-inspector-section">
-            <div className="manual-section-head">
-              <div>
-                <p className="eyebrow">Jídla a položky</p>
+          {layout.slotGroups.map((group) => (
+            <SlotGroupEditor
+              assetUrls={assetUrls}
+              group={group}
+              items={slide.items.filter((item) => manualItemSection(item, layout) === group.sectionKey)}
+              key={group.sectionKey}
+              onRequestPhoto={onRequestPhoto}
+              onUpdateItem={updateItem}
+            />
+          ))}
+        </>
+      )}
+    </aside>
+  );
+}
+
+/**
+ * Jedna skupina kolonek přesně podle slotů slidu (Polévka 1–2, Hlavní jídlo
+ * 1–5…). Kolonky jsou pevné: prázdný název = slot se na slidu schová.
+ */
+function SlotGroupEditor({
+  group,
+  items,
+  assetUrls,
+  onUpdateItem,
+  onRequestPhoto
+}: {
+  group: ManualPresentationSlotGroup;
+  items: ManualPresentationItem[];
+  assetUrls: Record<string, string>;
+  onUpdateItem: (itemId: string, patch: Partial<ManualPresentationItem>) => void;
+  onRequestPhoto: (itemId: string) => void;
+}) {
+  const filled = items.filter((item) => !isBlankManualItem(item)).length;
+
+  return (
+    <section className="manual-inspector-section">
+      <div className="manual-section-head">
+        <p className="eyebrow">{group.label}</p>
+        <strong>
+          {filled}/{group.capacity}
+        </strong>
+      </div>
+      <div className="manual-items-list">
+        {items.map((item, index) => {
+          const blank = isBlankManualItem(item);
+          return (
+            <article className={`manual-item-card ${blank ? "blank" : ""}`} key={item.id}>
+              <div className="manual-item-card-head">
                 <strong>
-                  {slide.items.length}/{layout.capacity}
+                  {group.itemLabel} {index + 1}
                 </strong>
+                {!blank ? (
+                  <button
+                    aria-label={`Vyprázdnit kolonku ${group.itemLabel} ${index + 1}`}
+                    className="icon-button"
+                    onClick={() =>
+                      onUpdateItem(item.id, {
+                        name: "",
+                        description: "",
+                        priceCzk: null,
+                        allergens: [],
+                        photoAssetId: null,
+                        photoSource: null
+                      })
+                    }
+                    title="Vyprázdnit kolonku"
+                    type="button"
+                  >
+                    <Eraser aria-hidden="true" size={16} />
+                  </button>
+                ) : null}
               </div>
-              <button
-                className="button compact"
-                disabled={slide.items.length >= layout.capacity}
-                onClick={() =>
-                  onSlideChange({ ...slide, items: [...slide.items, createItem()] })
-                }
-                type="button"
-              >
-                <Plus aria-hidden="true" size={17} />
-                Přidat
-              </button>
-            </div>
-            <div className="manual-items-list">
-              {slide.items.map((item, index) => (
-                <article className="manual-item-card" key={item.id}>
-                  <div className="manual-item-card-head">
-                    <strong>Položka {index + 1}</strong>
-                    <button
-                      aria-label={`Odebrat položku ${index + 1}`}
-                      className="icon-button"
-                      disabled={slide.items.length === 1}
-                      onClick={() =>
-                        onSlideChange({
-                          ...slide,
-                          items: slide.items.filter((candidate) => candidate.id !== item.id)
-                        })
-                      }
-                      type="button"
-                    >
-                      <Trash2 aria-hidden="true" size={17} />
-                    </button>
-                  </div>
-                  <label>
-                    Název jídla
-                    <input
-                      maxLength={160}
-                      onChange={(event) => updateItem(item.id, { name: event.target.value })}
-                      value={item.name}
-                    />
-                  </label>
-                  <div className="manual-two-columns">
-                    <label>
-                      Cena v Kč
+              <input
+                aria-label={`${group.itemLabel} ${index + 1} — název`}
+                className="manual-item-name"
+                maxLength={160}
+                onChange={(event) => onUpdateItem(item.id, { name: event.target.value })}
+                placeholder="Nevyplněné se na slidu schová"
+                value={item.name}
+              />
+              {!blank ? (
+                <>
+                  <div className="manual-item-row">
+                    <label className="manual-price-field">
+                      Cena Kč
                       <input
                         max={1_000_000}
                         min={0}
                         onChange={(event) => {
                           const raw = event.target.value;
                           if (raw === "") {
-                            updateItem(item.id, { priceCzk: null });
+                            onUpdateItem(item.id, { priceCzk: null });
                             return;
                           }
                           const parsed = Math.round(Number(raw));
                           if (!Number.isFinite(parsed)) {
                             return;
                           }
-                          updateItem(item.id, {
+                          onUpdateItem(item.id, {
                             priceCzk: Math.min(1_000_000, Math.max(0, parsed))
                           });
                         }}
-                        placeholder="např. 159"
+                        placeholder="159"
                         step={1}
                         type="number"
                         value={item.priceCzk ?? ""}
                       />
                     </label>
+                    <fieldset className="manual-allergen-chips">
+                      <legend>Alergeny</legend>
+                      {allergenCatalog.map((allergen) => {
+                        const active = item.allergens.includes(allergen.code);
+                        return (
+                          <button
+                            aria-pressed={active}
+                            className={active ? "active" : ""}
+                            key={allergen.code}
+                            onClick={() =>
+                              onUpdateItem(item.id, {
+                                allergens: toggleAllergen(item.allergens, allergen.code)
+                              })
+                            }
+                            title={allergen.fullName}
+                            type="button"
+                          >
+                            {allergen.code}
+                          </button>
+                        );
+                      })}
+                    </fieldset>
+                  </div>
+                  {group.description ? (
                     <label>
-                      Popis
+                      Popis na slidu
                       <input
                         maxLength={280}
                         onChange={(event) =>
-                          updateItem(item.id, { description: event.target.value })
+                          onUpdateItem(item.id, { description: event.target.value })
                         }
-                        placeholder="volitelný"
+                        placeholder="např. rajčata, mozzarella, bazalka"
                         value={item.description}
                       />
                     </label>
-                  </div>
-
-                  <fieldset className="manual-allergens">
-                    <legend>Alergeny</legend>
-                    {allergenCatalog.map((allergen) => (
-                      <label key={allergen.code} title={allergen.fullName}>
-                        <input
-                          checked={item.allergens.includes(allergen.code)}
-                          onChange={() =>
-                            updateItem(item.id, {
-                              allergens: toggleAllergen(item.allergens, allergen.code)
-                            })
-                          }
-                          type="checkbox"
-                        />
-                        <span>{allergen.code}</span>
-                      </label>
-                    ))}
-                  </fieldset>
-
-                  <div className="manual-photo-field">
-                    {item.photoAssetId && assetUrls[item.photoAssetId] ? (
-                      <Image
-                        alt={item.name}
-                        height={68}
-                        src={assetUrls[item.photoAssetId]}
-                        unoptimized
-                        width={92}
-                      />
-                    ) : (
-                      <span className="manual-photo-empty">
-                        <Camera aria-hidden="true" size={22} />
-                        Fotka je volitelná
-                      </span>
-                    )}
-                    <div>
-                      <button
-                        className="button compact"
-                        onClick={() => onRequestPhoto(item.id)}
-                        type="button"
-                      >
-                        <Camera aria-hidden="true" size={17} />
-                        {item.photoAssetId ? "Vyměnit" : "Přidat fotku"}
-                      </button>
-                      {item.photoAssetId ? (
-                        <button
-                          className="button compact"
-                          onClick={() =>
-                            updateItem(item.id, { photoAssetId: null, photoSource: null })
-                          }
-                          type="button"
-                        >
-                          <ImageOff aria-hidden="true" size={17} />
-                          Bez fotky
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                  {item.photoAssetId ? (
-                    <div className="manual-two-columns">
-                      <label>
-                        Ohnisko vodorovně: {Math.round(item.photoFocalPoint.x * 100)} %
-                        <input
-                          max={1}
-                          min={0}
-                          onChange={(event) =>
-                            updateItem(item.id, {
-                              photoFocalPoint: {
-                                ...item.photoFocalPoint,
-                                x: Number(event.target.value)
-                              }
-                            })
-                          }
-                          step={0.01}
-                          type="range"
-                          value={item.photoFocalPoint.x}
-                        />
-                      </label>
-                      <label>
-                        Ohnisko svisle: {Math.round(item.photoFocalPoint.y * 100)} %
-                        <input
-                          max={1}
-                          min={0}
-                          onChange={(event) =>
-                            updateItem(item.id, {
-                              photoFocalPoint: {
-                                ...item.photoFocalPoint,
-                                y: Number(event.target.value)
-                              }
-                            })
-                          }
-                          step={0.01}
-                          type="range"
-                          value={item.photoFocalPoint.y}
-                        />
-                      </label>
-                    </div>
                   ) : null}
-                </article>
-              ))}
-            </div>
-          </section>
-        </>
-      )}
-    </aside>
+                  {group.photo ? (
+                    <PhotoField
+                      assetUrls={assetUrls}
+                      item={item}
+                      onRequestPhoto={onRequestPhoto}
+                      onUpdateItem={onUpdateItem}
+                    />
+                  ) : null}
+                </>
+              ) : null}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function PhotoField({
+  item,
+  assetUrls,
+  onUpdateItem,
+  onRequestPhoto
+}: {
+  item: ManualPresentationItem;
+  assetUrls: Record<string, string>;
+  onUpdateItem: (itemId: string, patch: Partial<ManualPresentationItem>) => void;
+  onRequestPhoto: (itemId: string) => void;
+}) {
+  return (
+    <>
+      <div className="manual-photo-field">
+        {item.photoAssetId && assetUrls[item.photoAssetId] ? (
+          <Image
+            alt={item.name}
+            height={68}
+            src={assetUrls[item.photoAssetId]}
+            unoptimized
+            width={92}
+          />
+        ) : (
+          <span className="manual-photo-empty">
+            <Camera aria-hidden="true" size={22} />
+            Fotka je volitelná
+          </span>
+        )}
+        <div>
+          <button className="button compact" onClick={() => onRequestPhoto(item.id)} type="button">
+            <Camera aria-hidden="true" size={17} />
+            {item.photoAssetId ? "Vyměnit" : "Přidat fotku"}
+          </button>
+          {item.photoAssetId ? (
+            <button
+              className="button compact"
+              onClick={() => onUpdateItem(item.id, { photoAssetId: null, photoSource: null })}
+              type="button"
+            >
+              <ImageOff aria-hidden="true" size={17} />
+              Bez fotky
+            </button>
+          ) : null}
+        </div>
+      </div>
+      {item.photoAssetId ? (
+        <div className="manual-two-columns">
+          <label>
+            Ohnisko vodorovně: {Math.round(item.photoFocalPoint.x * 100)} %
+            <input
+              max={1}
+              min={0}
+              onChange={(event) =>
+                onUpdateItem(item.id, {
+                  photoFocalPoint: { ...item.photoFocalPoint, x: Number(event.target.value) }
+                })
+              }
+              step={0.01}
+              type="range"
+              value={item.photoFocalPoint.x}
+            />
+          </label>
+          <label>
+            Ohnisko svisle: {Math.round(item.photoFocalPoint.y * 100)} %
+            <input
+              max={1}
+              min={0}
+              onChange={(event) =>
+                onUpdateItem(item.id, {
+                  photoFocalPoint: { ...item.photoFocalPoint, y: Number(event.target.value) }
+                })
+              }
+              step={0.01}
+              type="range"
+              value={item.photoFocalPoint.y}
+            />
+          </label>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -607,19 +565,6 @@ function LayerInspector({
       ) : null}
     </section>
   );
-}
-
-function createItem(): ManualPresentationItem {
-  return {
-    id: crypto.randomUUID(),
-    name: "Nová položka",
-    description: "",
-    priceCzk: null,
-    allergens: [],
-    photoAssetId: null,
-    photoFocalPoint: { x: 0.5, y: 0.5 },
-    photoSource: null
-  };
 }
 
 function toggleAllergen(current: AllergenCode[], code: AllergenCode) {
