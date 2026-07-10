@@ -22,6 +22,7 @@ import {
   Archive,
   ArrowDown,
   ArrowUp,
+  Clapperboard,
   Copy,
   Download,
   Eye,
@@ -45,6 +46,16 @@ import { ManualPhotoPicker } from "./ManualPhotoPicker";
 import { ScaledTvFrame } from "./ScaledTvFrame";
 
 type StudioMessage = { tone: "ok" | "error" | "info"; text: string } | null;
+
+type RenderJobPayload = {
+  id: string;
+  status: "queued" | "leased" | "running" | "retrying" | "succeeded" | "failed" | "canceled";
+  progress: number;
+  exportId?: string;
+  error?: string | null;
+};
+
+const ACTIVE_RENDER_STATUSES = new Set(["queued", "leased", "running", "retrying"]);
 
 export function ManualPresentationStudio({
   initialDocument,
@@ -76,6 +87,8 @@ export function ManualPresentationStudio({
   const [previewSlideId, setPreviewSlideId] = useState(activeSlideId);
   const [slidePickerOpen, setSlidePickerOpen] = useState(false);
   const [photoTargetItemId, setPhotoTargetItemId] = useState<string | null>(null);
+  const [renderJob, setRenderJob] = useState<RenderJobPayload | null>(null);
+  const [renderStarting, setRenderStarting] = useState(false);
   const attemptedAssetIds = useRef(new Set<string>());
 
   const mode = layoutMode ? "layout" : "content";
@@ -147,6 +160,27 @@ export function ManualPresentationStudio({
       cancelled = true;
     };
   }, [assetUrls, document]);
+
+  // Průběh MP4 renderu se dotahuje z /api/render-jobs, dokud job neskončí.
+  useEffect(() => {
+    if (!renderJob || !ACTIVE_RENDER_STATUSES.has(renderJob.status)) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      void (async () => {
+        try {
+          const response = await fetch(`/api/render-jobs/${renderJob.id}`);
+          const body = (await response.json().catch(() => null)) as RenderJobPayload | null;
+          if (response.ok && body?.id) {
+            setRenderJob(body);
+          }
+        } catch {
+          // výpadek sítě — stav se dotáhne dalším tikem
+        }
+      })();
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [renderJob]);
 
   function commit(next: ManualPresentationDocument) {
     setDocument(next);
@@ -458,6 +492,51 @@ export function ManualPresentationStudio({
     }
   }
 
+  /** MP4 smyčka ve stejném designu jako TV — worker renderuje z uložené verze. */
+  async function startMp4Render() {
+    if (!canPersist) {
+      setMessage({
+        tone: "error",
+        text: "Generování videa vyžaduje přihlášenou roli vlastník, admin nebo editor."
+      });
+      return;
+    }
+    if (!activeSaved || dirty) {
+      setMessage({
+        tone: "info",
+        text: "Video se generuje z dlouhodobě uložené verze — nejdřív prezentaci uložte."
+      });
+      return;
+    }
+
+    setRenderStarting(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/render-jobs", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          deckVersionId: activeSaved.deckVersionId,
+          jobType: "render-final"
+        })
+      });
+      const body = (await response.json().catch(() => null)) as
+        | (RenderJobPayload & { error?: string })
+        | null;
+      if (!response.ok || !body?.id) {
+        throw new Error(body?.error ?? `Zadání renderu selhalo (${response.status}).`);
+      }
+      setRenderJob(body);
+    } catch (error) {
+      setMessage({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Zadání renderu selhalo."
+      });
+    } finally {
+      setRenderStarting(false);
+    }
+  }
+
   function openPreview() {
     setPreviewSlideId(activeSlide.id);
     setPreviewOpen(true);
@@ -492,6 +571,20 @@ export function ManualPresentationStudio({
             Jednorázové PDF
           </button>
           <button
+            className="button"
+            disabled={renderStarting || Boolean(renderJob && ACTIVE_RENDER_STATUSES.has(renderJob.status))}
+            onClick={() => void startMp4Render()}
+            title="Vygeneruje MP4 smyčku pro TV z dlouhodobě uložené verze."
+            type="button"
+          >
+            {renderStarting ? (
+              <Loader2 aria-hidden="true" className="spin" size={19} />
+            ) : (
+              <Clapperboard aria-hidden="true" size={19} />
+            )}
+            MP4 video
+          </button>
+          <button
             className="button primary"
             disabled={saving || !canPersist || (!dirty && Boolean(activeSaved))}
             onClick={() => void saveLongTerm()}
@@ -520,6 +613,42 @@ export function ManualPresentationStudio({
       {message ? (
         <div className={`manual-message ${message.tone}`} role={message.tone === "error" ? "alert" : "status"}>
           {message.text}
+        </div>
+      ) : null}
+
+      {renderJob ? (
+        <div
+          className={`manual-render-bar ${renderJob.status === "failed" || renderJob.status === "canceled" ? "error" : ""}`}
+          role="status"
+        >
+          <Clapperboard aria-hidden="true" size={18} />
+          {renderJob.status === "queued" ? (
+            <span>Video je ve frontě — render worker ho zpracuje, jakmile poběží.</span>
+          ) : null}
+          {renderJob.status === "leased" || renderJob.status === "running" || renderJob.status === "retrying" ? (
+            <span>Video se generuje… {Math.round(renderJob.progress)} %</span>
+          ) : null}
+          {renderJob.status === "succeeded" ? (
+            renderJob.exportId ? (
+              <span>
+                Video je hotové.{" "}
+                <a href={`/api/exports/${renderJob.exportId}/download`}>Stáhnout MP4</a>
+              </span>
+            ) : (
+              <span>Render doběhl, ale výsledný soubor se zatím nenašel — zkuste to za chvíli znovu.</span>
+            )
+          ) : null}
+          {renderJob.status === "failed" || renderJob.status === "canceled" ? (
+            <span>Render videa selhal{renderJob.error ? `: ${renderJob.error}` : "."}</span>
+          ) : null}
+          <button
+            aria-label="Skrýt stav renderu"
+            className="icon-button"
+            onClick={() => setRenderJob(null)}
+            type="button"
+          >
+            <X aria-hidden="true" size={16} />
+          </button>
         </div>
       ) : null}
 

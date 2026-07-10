@@ -98,7 +98,27 @@ export async function getRenderJob(id: string, orgId?: string) {
     throw new Error(`Render job status lookup failed: ${error.message}`);
   }
 
-  return data ? mapRenderJob(data) : null;
+  if (!data) {
+    return null;
+  }
+
+  const job = mapRenderJob(data);
+
+  // Hotový job doplní odkaz na výsledné MP4 (exports řádek zapisuje worker).
+  if (job.status === "succeeded") {
+    const exportRow = await supabase
+      .from("exports")
+      .select("id")
+      .eq("render_job_id", data.id)
+      .eq("org_id", data.org_id ?? orgId ?? "")
+      .maybeSingle<{ id: string }>();
+
+    if (!exportRow.error && exportRow.data) {
+      return { ...job, exportId: exportRow.data.id };
+    }
+  }
+
+  return job;
 }
 
 function mapRenderJob(row: RenderJobRow) {

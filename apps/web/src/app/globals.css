@@ -4215,6 +4215,40 @@ a {
   background: rgba(39, 106, 134, 0.08);
 }
 
+.manual-render-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 11px 14px;
+  color: var(--text);
+  background: var(--surface);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.manual-render-bar.error {
+  border-color: rgba(183, 28, 28, 0.5);
+  color: var(--red);
+  background: rgba(183, 28, 28, 0.05);
+}
+
+.manual-render-bar span {
+  flex: 1;
+}
+
+.manual-render-bar a {
+  color: var(--red);
+  text-decoration: underline;
+}
+
+.manual-render-bar .icon-button {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+}
+
 /* Jeden kompaktní pruh s nastavením celé prezentace — místo samostatné
    sekce v inspektoru, ať pravý panel patří jen aktivnímu slidu. */
 .manual-context-bar {
