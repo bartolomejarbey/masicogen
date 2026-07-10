@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { MANUAL_PRESENTATION_EXTRACTION_MODEL } from "@masico/shared";
 import { processDishPhotoJobs } from "@/lib/photo-queue";
 import { isLocalDev, requireConfiguredIntegration, safeEqual } from "@/lib/security";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
@@ -163,6 +164,8 @@ async function runNightlyPhotoSweep(admin: SupabaseClient): Promise<PhotoSweepSu
           .eq("org_id", org.id)
           .in("menu_id", menuIds)
           .in("status", ["draft", "approved"])
+          // Verze ručních prezentací nejsou denní menu — NULL-safe vyloučení.
+          .or(`extraction_model.is.null,extraction_model.neq.${MANUAL_PRESENTATION_EXTRACTION_MODEL}`)
           .order("created_at", { ascending: false })
           .returns<MenuVersionRow[]>();
 

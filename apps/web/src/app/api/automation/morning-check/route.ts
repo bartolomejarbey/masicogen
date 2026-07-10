@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { MANUAL_PRESENTATION_EXTRACTION_MODEL } from "@masico/shared";
 import { isLocalDev, requireConfiguredIntegration, safeEqual } from "@/lib/security";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
@@ -228,6 +229,8 @@ async function checkTodayDeck(
     .select("id, status, extraction_model, created_at")
     .eq("org_id", canteen.org_id)
     .eq("menu_id", menuResult.data.id)
+    // Verze ručních prezentací nejsou denní menu — NULL-safe vyloučení.
+    .or(`extraction_model.is.null,extraction_model.neq.${MANUAL_PRESENTATION_EXTRACTION_MODEL}`)
     .order("created_at", { ascending: false })
     .returns<MenuVersionRow[]>();
 

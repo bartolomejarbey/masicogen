@@ -1,5 +1,9 @@
 import { redirect } from "next/navigation";
-import { menuExtractionResultSchema, type MenuExtractionResult } from "@masico/shared";
+import {
+  MANUAL_PRESENTATION_EXTRACTION_MODEL,
+  menuExtractionResultSchema,
+  type MenuExtractionResult
+} from "@masico/shared";
 import { DayMenuComposer } from "@/components/DayMenuComposer";
 import { StudioShell } from "@/components/StudioShell";
 import {
@@ -105,6 +109,8 @@ async function loadDayMenu(
     .select("snapshot")
     .eq("org_id", orgId)
     .eq("menu_id", menuRow.id)
+    // Verze ručních prezentací nejsou denní menu — NULL-safe vyloučení.
+    .or(`extraction_model.is.null,extraction_model.neq.${MANUAL_PRESENTATION_EXTRACTION_MODEL}`)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle<{ snapshot: unknown }>();

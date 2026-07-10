@@ -5,6 +5,7 @@ export * from "./deck-audit";
 export * from "./demo";
 export * from "./format";
 export * from "./import-parser";
+export * from "./manual-presentation";
 export * from "./deck-builder";
 export * from "./schemas";
 export * from "./settings";

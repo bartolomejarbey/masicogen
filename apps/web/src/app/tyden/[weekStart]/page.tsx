@@ -1,5 +1,9 @@
 import { redirect } from "next/navigation";
-import { czechHolidayName, menuExtractionResultSchema } from "@masico/shared";
+import {
+  MANUAL_PRESENTATION_EXTRACTION_MODEL,
+  czechHolidayName,
+  menuExtractionResultSchema
+} from "@masico/shared";
 import { StudioShell } from "@/components/StudioShell";
 import { WeekReview, type WeekReviewDay } from "@/components/WeekReview";
 import {
@@ -115,6 +119,8 @@ async function loadWeekData(
         .select("id, menu_id, status, snapshot, extraction_model, source_id, created_at")
         .eq("org_id", orgId)
         .in("menu_id", menuIds)
+        // Verze ručních prezentací nejsou denní menu — NULL-safe vyloučení.
+        .or(`extraction_model.is.null,extraction_model.neq.${MANUAL_PRESENTATION_EXTRACTION_MODEL}`)
         .order("created_at", { ascending: false })
         .returns<MenuVersionRow[]>()
     : { data: [] as MenuVersionRow[] };

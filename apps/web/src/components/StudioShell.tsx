@@ -2,6 +2,7 @@ import {
   Bot,
   CalendarDays,
   CheckSquare,
+  Clapperboard,
   Home,
   MonitorPlay,
   Palette,
@@ -14,6 +15,7 @@ import { getStudioAccessState, type StudioAccessRole, type StudioAccessState } f
 const navItems = [
   { label: "Dnes", icon: Home, section: "today", href: "/" },
   { label: "Týden", icon: CalendarDays, section: "week", href: "/tyden" },
+  { label: "Prezentace", icon: Clapperboard, section: "presentations", href: "/prezentace" },
   { label: "Kontrola vzhledu", icon: CheckSquare, section: "audit", href: "/audit" }
 ];
 
@@ -28,7 +30,14 @@ export async function StudioShell({
   access: providedAccess,
   children
 }: {
-  activeSection?: "today" | "week" | "audit" | "readiness" | "templates" | "settings";
+  activeSection?:
+    | "today"
+    | "week"
+    | "presentations"
+    | "audit"
+    | "readiness"
+    | "templates"
+    | "settings";
   access?: StudioAccessState;
   children: React.ReactNode;
 }) {
