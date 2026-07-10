@@ -314,7 +314,10 @@ async function extractWeek(input: WeekImportInput) {
       fileBase64,
       weekStartHint: input.weekStart
     });
-  } catch {
+  } catch (error) {
+    // Skutečná příčina (model, schéma, kvóta, síť) musí zůstat v logu —
+    // uživateli patří srozumitelná hláška, provozu plný kontext.
+    console.error("import-week: extrakce lístku selhala", error);
     throw new WeekImportError(
       "week_extraction_failed",
       "Jídelníček se z lístku nepodařilo přečíst. Zkuste ostřejší fotku celého lístku, nebo zadejte dny ručně.",
