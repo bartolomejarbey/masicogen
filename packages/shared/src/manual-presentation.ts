@@ -358,6 +358,52 @@ const manualSectionNames: Record<SectionKey, string> = {
   special: "Dnes navíc"
 };
 
+/**
+ * No-photo layout „naší" šablony: pro slidy bez fotek jídel schová foto
+ * vrstvy a text přeskládá tak, aby po fotce nezůstalo prázdné místo ani
+ * placeholder — design zůstává stejný, jen bez fotek.
+ *  - Hlavní jídla: název jídla se roztáhne na místo po fotce (čistý seznam).
+ *  - Polévky: karta se změní na textovou (velký název, výrazná cena, alergeny).
+ */
+function applyNoPhotoLayout(
+  manifest: TemplateManifestV2,
+  layoutId: ManualPresentationLayoutId
+): TemplateManifestV2 {
+  if (layoutId !== "mains-grid" && layoutId !== "soups-duo") {
+    return manifest;
+  }
+  return {
+    ...manifest,
+    layers: manifest.layers.map((layer) => {
+      if (
+        layer.type === "image" &&
+        layer.binding?.source === "item" &&
+        layer.binding.field === "photo"
+      ) {
+        return { ...layer, placeholder: "none" as const };
+      }
+      if (layoutId === "mains-grid" && layer.type === "text" && /^main-\d+-name$/.test(layer.id)) {
+        return { ...layer, frame: { ...layer.frame, x: 128, w: 1264 } };
+      }
+      if (layoutId === "soups-duo") {
+        if (layer.type === "shape" && /^soup-\d+-card$/.test(layer.id)) {
+          return { ...layer, frame: { ...layer.frame, y: 288, h: 504 } };
+        }
+        if (layer.type === "text" && /^soup-\d+-name$/.test(layer.id)) {
+          return { ...layer, fontSizePx: 58, maxLines: 3, frame: { ...layer.frame, y: 350, h: 240 } };
+        }
+        if (layer.type === "text" && /^soup-\d+-price$/.test(layer.id)) {
+          return { ...layer, fontSizePx: 68, frame: { ...layer.frame, y: 648, h: 90 } };
+        }
+        if (layer.type === "text" && /^soup-\d+-allergens$/.test(layer.id)) {
+          return { ...layer, fontSizePx: 40, frame: { ...layer.frame, y: 668, h: 60 } };
+        }
+      }
+      return layer;
+    })
+  };
+}
+
 export function buildManualPresentationRenderModel(
   rawDocument: ManualPresentationDocument,
   options: {
@@ -420,8 +466,15 @@ export function buildManualPresentationRenderModel(
       sections.set(group.sectionKey, section);
     }
 
+    // Slide bez jediné fotky = čistý no-photo layout (žádné prázdné foto
+    // plochy ani placeholdery). Se snímky zůstává původní layout beze změny.
+    const slideHasPhoto = slide.items.some(
+      (item) => !isBlankManualItem(item) && item.photoAssetId
+    );
     menuItemIdsBySlide.set(slide.id, slideItemIds);
-    templateManifests[slide.manifest.id] = slide.manifest;
+    templateManifests[slide.manifest.id] = slideHasPhoto
+      ? slide.manifest
+      : applyNoPhotoLayout(slide.manifest, slide.baseTemplateId);
   }
 
   const allAssetIds = [...assetIds];
