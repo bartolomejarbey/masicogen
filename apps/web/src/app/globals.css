@@ -4428,24 +4428,15 @@ a {
   font-size: 15px;
 }
 
-.manual-layout-toggle {
-  display: inline-flex;
-  min-height: 40px;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0 14px;
+.manual-stage-hint {
   color: var(--muted);
-  background: #fff;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
 }
 
-.manual-layout-toggle.active {
-  border-color: var(--red);
-  color: var(--red);
-  background: rgba(183, 28, 28, 0.06);
+.manual-generate-slide {
+  width: 100%;
+  justify-content: center;
 }
 
 .manual-stage {
@@ -4793,8 +4784,15 @@ a {
 }
 
 .manual-photo-field > div {
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 6px;
+}
+
+.manual-photo-field > div .button.compact {
+  justify-content: center;
 }
 
 .manual-inspector-empty {

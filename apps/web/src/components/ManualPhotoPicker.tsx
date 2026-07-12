@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, Loader2, Search, Upload, X } from "lucide-react";
+import { Camera, Loader2, Search, Sparkles, Upload, X } from "lucide-react";
 import Image from "next/image";
 
 type PhotoChoice = {
@@ -35,6 +35,7 @@ export function ManualPhotoPicker({
   const [photos, setPhotos] = useState<LibraryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const searchSequenceRef = useRef(0);
@@ -127,6 +128,39 @@ export function ManualPhotoPicker({
     }
   }
 
+  async function generatePhoto() {
+    const dish = dishName.trim();
+    if (dish.length < 2) {
+      setError("Nejdřív vyplňte název jídla, pak vygenerujte fotku.");
+      return;
+    }
+    setGenerating(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/dish-photos/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ dishName: dish, canteenId })
+      });
+      const body = (await response.json().catch(() => null)) as
+        | { assetId?: string; signedUrl?: string | null; error?: string }
+        | null;
+      if (!response.ok || !body?.assetId) {
+        throw new Error(body?.error ?? "Generování fotky selhalo.");
+      }
+      onPick({
+        assetId: body.assetId,
+        url: body.signedUrl ?? null,
+        focalPoint: { x: 0.5, y: 0.5 },
+        source: "ai"
+      });
+    } catch (generateError) {
+      setError(generateError instanceof Error ? generateError.message : "Generování selhalo.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   return (
     <div className="manual-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="manual-photo-title">
       <div className="manual-photo-modal card">
@@ -152,6 +186,20 @@ export function ManualPhotoPicker({
           </label>
           <button
             className="button primary"
+            disabled={generating}
+            onClick={() => void generatePhoto()}
+            title="Vygeneruje fotku jídla podle názvu."
+            type="button"
+          >
+            {generating ? (
+              <Loader2 aria-hidden="true" className="spin" size={18} />
+            ) : (
+              <Sparkles aria-hidden="true" size={18} />
+            )}
+            AI fotka
+          </button>
+          <button
+            className="button"
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
             type="button"

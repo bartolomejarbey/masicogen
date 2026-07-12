@@ -1,8 +1,12 @@
 import {
   allergenCodeSchema,
+  getManualPresentationLayout,
   menuExtractionResultSchema,
   weekExtractionResultSchema,
+  type AllergenCode,
+  type ManualPresentationLayoutId,
   type MenuExtractionResult,
+  type SectionKey,
   type WeekExtractionResult
 } from "@masico/shared";
 import { z } from "zod";
@@ -64,6 +68,31 @@ export function menuExtractionJsonSchema() {
 
 export function weekExtractionJsonSchema() {
   return z.toJSONSchema(llmWeekExtractionSchema);
+}
+
+/**
+ * Generování obsahu jednoho slidu ruční prezentace. Na rozdíl od extrakce
+ * tady AI obsah NAVRHUJE (ukázkové menu) — proto vlastní minimální kontrakt.
+ * Výsledek je jen návrh: uživatel ho v editoru vidí, upraví a schválí.
+ */
+const llmSlideItemSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  priceCzk: z.number().nullable(),
+  allergens: z.array(z.string())
+});
+
+const llmSlideSectionSchema = z.object({
+  sectionKey: z.enum(["soups", "mains", "pizza", "buffet", "special"]),
+  items: z.array(llmSlideItemSchema)
+});
+
+const llmSlideGenerationSchema = z.object({
+  sections: z.array(llmSlideSectionSchema)
+});
+
+export function slideGenerationJsonSchema() {
+  return z.toJSONSchema(llmSlideGenerationSchema);
 }
 
 type LlmSection = z.infer<typeof llmSectionSchema>;
@@ -365,6 +394,203 @@ function sanitizeWeekExtraction(raw: unknown): unknown {
   }
 
   return raw;
+}
+
+export type GeneratedSlideItem = {
+  name: string;
+  description: string;
+  priceCzk: number | null;
+  allergens: AllergenCode[];
+};
+
+export type GeneratedSlideSection = {
+  sectionKey: SectionKey;
+  items: GeneratedSlideItem[];
+};
+
+const SLIDE_PRICE_MAX_CZK = 990;
+
+const slideGenerationSystemPrompt = [
+  "Jsi kreativní kuchařský asistent české firemní jídelny MASI-CO.",
+  "Navrhuješ UKÁZKOVÝ obsah jednoho slidu denního menu na TV — je to jen návrh, který člověk potvrdí.",
+  "Vracej realistická česká hotová jídla, polévky, položky bufetu nebo pizzu podle zadaných sekcí.",
+  "Ceny uváděj jako celá čísla v Kč: polévka 30–55, hlavní jídlo 120–199, položka bufetu 15–59, pizza 149–199, výhodné menu 130–169.",
+  "Alergeny uváděj jako pole čísel '1' až '14' (číselné EU kódy), realisticky podle složení. Když si nejsi jistý, dej prázdné pole.",
+  "Krátký popis (description) vyplň jen když ho sekce vyžaduje; jinak prázdný řetězec.",
+  "Názvy krátké a výstižné jako na jídelním lístku.",
+  "Vrať přesně JSON dle schématu, sekce ve stejném pořadí jako v zadání."
+].join(" ");
+
+/**
+ * Navrhne obsah jednoho slidu ruční prezentace (názvy jídel, ceny, alergeny).
+ * Bez klíče v demo režimu vrací realistický vzorek podle typu slidu, aby
+ * editor fungoval i lokálně. Výsledek je vždy jen návrh k ruční úpravě.
+ */
+export async function generateSlideContent(input: {
+  layoutId: ManualPresentationLayoutId;
+  hint?: string;
+  avoidNames?: string[];
+}): Promise<GeneratedSlideSection[]> {
+  const layout = getManualPresentationLayout(input.layoutId);
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    if (!demoDataEnabled()) {
+      throw new Error("OPENAI_API_KEY is missing.");
+    }
+    return demoSlideContent(input.layoutId);
+  }
+
+  const sectionSpec = layout.slotGroups
+    .map(
+      (group) =>
+        `- sectionKey "${group.sectionKey}" (${group.label}): až ${group.capacity} položek${
+          group.description ? ", u každé i krátký popis surovin" : ""
+        }`
+    )
+    .join("\n");
+  const avoid = (input.avoidNames ?? []).map((name) => name.trim()).filter((name) => name.length > 0);
+
+  const response = await fetch(`${OPENAI_BASE_URL}/responses`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_TEXT_MODEL ?? process.env.OPENAI_VISION_MODEL ?? "gpt-5.4-mini",
+      store: false,
+      input: [
+        { role: "system", content: slideGenerationSystemPrompt },
+        {
+          role: "user",
+          content: [
+            input.hint?.trim()
+              ? `Zaměření/přání: ${input.hint.trim()}`
+              : "Zaměření: běžné české firemní obědové menu.",
+            "Vygeneruj obsah pro tyto sekce slidu:",
+            sectionSpec,
+            avoid.length > 0 ? `Nepoužívej znovu tato jídla: ${avoid.join(", ")}.` : ""
+          ]
+            .filter(Boolean)
+            .join("\n")
+        }
+      ],
+      text: {
+        format: {
+          type: "json_schema",
+          name: "masico_slide_generation",
+          schema: slideGenerationJsonSchema()
+        }
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errorBody = (await response.text().catch(() => "")).slice(0, 600);
+    throw new Error(
+      `OpenAI slide generation failed: ${response.status}${errorBody ? ` — ${errorBody}` : ""}`
+    );
+  }
+
+  const payload = (await response.json()) as {
+    output_text?: string;
+    output?: Array<{ content?: Array<{ text?: string }> }>;
+  };
+  const rawJson =
+    payload.output_text ??
+    payload.output?.flatMap((item) => item.content ?? []).find((item) => item.text)?.text;
+  if (!rawJson) {
+    throw new Error("OpenAI slide generation response did not contain structured output text.");
+  }
+
+  const parsed = llmSlideGenerationSchema.parse(JSON.parse(rawJson));
+  return adaptGeneratedSlide(parsed.sections, input.layoutId);
+}
+
+/** LLM sekce → sloty rozložení: ořízne na kapacitu, srovná ceny a alergeny. */
+function adaptGeneratedSlide(
+  sections: z.infer<typeof llmSlideSectionSchema>[],
+  layoutId: ManualPresentationLayoutId
+): GeneratedSlideSection[] {
+  const layout = getManualPresentationLayout(layoutId);
+  const bySection = new Map(sections.map((section) => [section.sectionKey, section.items]));
+  return layout.slotGroups.map((group) => ({
+    sectionKey: group.sectionKey,
+    items: (bySection.get(group.sectionKey) ?? [])
+      .map((item) => ({
+        name: item.name.trim().slice(0, 160),
+        description: (group.description ? item.description.trim() : "").slice(0, 280),
+        priceCzk: clampSlidePrice(item.priceCzk),
+        allergens: normalizeAllergens(item.allergens)
+      }))
+      .filter((item) => item.name.length > 0)
+      .slice(0, group.capacity)
+  }));
+}
+
+function clampSlidePrice(value: number | null): number | null {
+  if (value === null || !Number.isFinite(value)) {
+    return null;
+  }
+  return Math.min(SLIDE_PRICE_MAX_CZK, Math.max(0, Math.round(value)));
+}
+
+function normalizeAllergens(values: string[]): AllergenCode[] {
+  const seen = new Set<string>();
+  const out: AllergenCode[] = [];
+  for (const value of values) {
+    const trimmed = String(value).trim();
+    if (validAllergenCodes.has(trimmed) && !seen.has(trimmed)) {
+      seen.add(trimmed);
+      out.push(trimmed as AllergenCode);
+    }
+  }
+  return out.sort((left, right) => Number(left) - Number(right));
+}
+
+/** Realistický vzorek podle typu slidu — demo/lokální provoz bez OpenAI klíče. */
+const demoDishPool: Record<SectionKey, GeneratedSlideItem[]> = {
+  soups: [
+    { name: "Zeleninový vývar s celestýnskými nudlemi", description: "", priceCzk: 40, allergens: ["1", "3", "6", "9"] },
+    { name: "Dršťková", description: "", priceCzk: 40, allergens: ["1", "6"] },
+    { name: "Kulajda s vejcem", description: "", priceCzk: 42, allergens: ["1", "3", "7"] }
+  ],
+  mains: [
+    { name: "Smažený vepřový řízek z krkovice, domácí bramborový salát", description: "", priceCzk: 149, allergens: ["1", "3", "7", "9", "10"] },
+    { name: "Koprová omáčka, hovězí maso, houskový knedlík", description: "", priceCzk: 159, allergens: ["1", "3", "7", "12"] },
+    { name: "Pečené kachní stehno, červené zelí, bramborový knedlík", description: "", priceCzk: 179, allergens: ["1", "3", "7"] },
+    { name: "Těstovinový salát s tuňákem, olivami a jogurtovým dresinkem", description: "", priceCzk: 145, allergens: ["1", "3", "4", "7"] },
+    { name: "Dukátové buchtičky s vanilkovým krémem", description: "", priceCzk: 130, allergens: ["1", "3", "7"] }
+  ],
+  pizza: [
+    { name: "Pizza Diavola", description: "pálivý salám, mozzarella, chilli papričky, med", priceCzk: 169, allergens: ["1", "7"] }
+  ],
+  buffet: [
+    { name: "Pečené kuřecí stehno", description: "", priceCzk: 39, allergens: [] },
+    { name: "Smažený sýr s tatarkou", description: "", priceCzk: 45, allergens: ["1", "3", "7", "10"] },
+    { name: "Bramborový guláš", description: "", priceCzk: 28, allergens: ["1"] },
+    { name: "Grilovaná klobása s hořčicí", description: "", priceCzk: 45, allergens: ["1", "10"] },
+    { name: "Dušená rýže", description: "", priceCzk: 15, allergens: [] },
+    { name: "Opékané brambory", description: "", priceCzk: 18, allergens: [] },
+    { name: "Míchaný zeleninový salát", description: "", priceCzk: 22, allergens: [] }
+  ],
+  special: [
+    { name: "Výhodné menu: polévka dne + hlavní jídlo dne", description: "", priceCzk: 150, allergens: ["1", "3", "7"] },
+    { name: "Domácí jablečný štrúdl", description: "", priceCzk: 45, allergens: ["1", "3", "7"] },
+    { name: "Čokoládový dortík", description: "", priceCzk: 39, allergens: ["1", "3", "7"] }
+  ]
+};
+
+function demoSlideContent(layoutId: ManualPresentationLayoutId): GeneratedSlideSection[] {
+  const layout = getManualPresentationLayout(layoutId);
+  return layout.slotGroups.map((group) => ({
+    sectionKey: group.sectionKey,
+    items: (demoDishPool[group.sectionKey] ?? []).slice(0, group.capacity).map((item) => ({
+      ...item,
+      description: group.description ? item.description : "",
+      allergens: [...item.allergens]
+    }))
+  }));
 }
 
 export async function generateBackgroundImage(input: {

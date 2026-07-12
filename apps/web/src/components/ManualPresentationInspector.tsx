@@ -10,31 +10,32 @@ import {
   type ManualPresentationItem,
   type ManualPresentationLayoutId,
   type ManualPresentationSlide,
-  type ManualPresentationSlotGroup,
-  type TemplateLayerV2
+  type ManualPresentationSlotGroup
 } from "@masico/shared";
-import { Camera, Eraser, ImageOff } from "lucide-react";
+import { Camera, Eraser, ImageOff, Loader2, Sparkles } from "lucide-react";
 import Image from "next/image";
-import { manualLayerLabel } from "./ManualPresentationCanvas";
 
 export function ManualPresentationInspector({
   slide,
-  mode,
-  selectedLayerId,
   assetUrls,
+  generatingSlide,
+  generatingPhotoId,
   onSlideChange,
   onChangeLayout,
-  onRequestPhoto
+  onRequestPhoto,
+  onGenerateSlide,
+  onGeneratePhoto
 }: {
   slide: ManualPresentationSlide;
-  mode: "content" | "layout";
-  selectedLayerId: string | null;
   assetUrls: Record<string, string>;
+  generatingSlide: boolean;
+  generatingPhotoId: string | null;
   onSlideChange: (slide: ManualPresentationSlide) => void;
   onChangeLayout: (layoutId: ManualPresentationLayoutId) => void;
   onRequestPhoto: (itemId: string) => void;
+  onGenerateSlide: () => void;
+  onGeneratePhoto: (itemId: string) => void;
 }) {
-  const selectedLayer = slide.manifest.layers.find((layer) => layer.id === selectedLayerId) ?? null;
   const layout = getManualPresentationLayout(slide.baseTemplateId);
 
   function updateItem(itemId: string, patch: Partial<ManualPresentationItem>) {
@@ -44,21 +45,22 @@ export function ManualPresentationInspector({
     });
   }
 
-  function updateLayer(patcher: (layer: TemplateLayerV2) => TemplateLayerV2) {
-    if (!selectedLayer) return;
-    onSlideChange({
-      ...slide,
-      manifest: {
-        ...slide.manifest,
-        layers: slide.manifest.layers.map((layer) =>
-          layer.id === selectedLayer.id ? patcher(layer) : layer
-        )
-      }
-    });
-  }
-
   return (
     <aside className="manual-inspector card">
+      <button
+        className="button primary manual-generate-slide"
+        disabled={generatingSlide}
+        onClick={onGenerateSlide}
+        type="button"
+      >
+        {generatingSlide ? (
+          <Loader2 aria-hidden="true" className="spin" size={18} />
+        ) : (
+          <Sparkles aria-hidden="true" size={18} />
+        )}
+        {generatingSlide ? "Generuji obsah slidu…" : "Vygenerovat obsah slidu (AI)"}
+      </button>
+
       <section className="manual-inspector-section">
         <p className="eyebrow">Slide</p>
         <label>
@@ -83,53 +85,32 @@ export function ManualPresentationInspector({
             value={slide.title}
           />
         </label>
-        <div className="manual-slide-meta-row">
-          <label>
-            Na TV: {slide.durationSeconds} s
-            <input
-              max={60}
-              min={3}
-              onChange={(event) =>
-                onSlideChange({ ...slide, durationSeconds: Number(event.target.value) })
-              }
-              type="range"
-              value={slide.durationSeconds}
-            />
-          </label>
-          <label>
-            Pozadí
-            <input
-              aria-label="Barva pozadí slidu"
-              onChange={(event) =>
-                onSlideChange({
-                  ...slide,
-                  manifest: { ...slide.manifest, backgroundColor: event.target.value }
-                })
-              }
-              type="color"
-              value={slide.manifest.backgroundColor}
-            />
-          </label>
-        </div>
+        <label>
+          Na TV: {slide.durationSeconds} s
+          <input
+            max={60}
+            min={3}
+            onChange={(event) =>
+              onSlideChange({ ...slide, durationSeconds: Number(event.target.value) })
+            }
+            type="range"
+            value={slide.durationSeconds}
+          />
+        </label>
       </section>
 
-      {mode === "layout" ? (
-        <LayerInspector layer={selectedLayer} onChange={updateLayer} />
-      ) : (
-        <>
-          <StaticTextFields slide={slide} onSlideChange={onSlideChange} />
-          {layout.slotGroups.map((group) => (
-            <SlotGroupEditor
-              assetUrls={assetUrls}
-              group={group}
-              items={slide.items.filter((item) => manualItemSection(item, layout) === group.sectionKey)}
-              key={group.sectionKey}
-              onRequestPhoto={onRequestPhoto}
-              onUpdateItem={updateItem}
-            />
-          ))}
-        </>
-      )}
+      {layout.slotGroups.map((group) => (
+        <SlotGroupEditor
+          assetUrls={assetUrls}
+          generatingPhotoId={generatingPhotoId}
+          group={group}
+          items={slide.items.filter((item) => manualItemSection(item, layout) === group.sectionKey)}
+          key={group.sectionKey}
+          onGeneratePhoto={onGeneratePhoto}
+          onRequestPhoto={onRequestPhoto}
+          onUpdateItem={updateItem}
+        />
+      ))}
     </aside>
   );
 }
@@ -142,14 +123,18 @@ function SlotGroupEditor({
   group,
   items,
   assetUrls,
+  generatingPhotoId,
   onUpdateItem,
-  onRequestPhoto
+  onRequestPhoto,
+  onGeneratePhoto
 }: {
   group: ManualPresentationSlotGroup;
   items: ManualPresentationItem[];
   assetUrls: Record<string, string>;
+  generatingPhotoId: string | null;
   onUpdateItem: (itemId: string, patch: Partial<ManualPresentationItem>) => void;
   onRequestPhoto: (itemId: string) => void;
+  onGeneratePhoto: (itemId: string) => void;
 }) {
   const filled = items.filter((item) => !isBlankManualItem(item)).length;
 
@@ -266,7 +251,9 @@ function SlotGroupEditor({
                   {group.photo ? (
                     <PhotoField
                       assetUrls={assetUrls}
+                      generating={generatingPhotoId === item.id}
                       item={item}
+                      onGeneratePhoto={onGeneratePhoto}
                       onRequestPhoto={onRequestPhoto}
                       onUpdateItem={onUpdateItem}
                     />
@@ -284,13 +271,17 @@ function SlotGroupEditor({
 function PhotoField({
   item,
   assetUrls,
+  generating,
   onUpdateItem,
-  onRequestPhoto
+  onRequestPhoto,
+  onGeneratePhoto
 }: {
   item: ManualPresentationItem;
   assetUrls: Record<string, string>;
+  generating: boolean;
   onUpdateItem: (itemId: string, patch: Partial<ManualPresentationItem>) => void;
   onRequestPhoto: (itemId: string) => void;
+  onGeneratePhoto: (itemId: string) => void;
 }) {
   return (
     <>
@@ -310,9 +301,22 @@ function PhotoField({
           </span>
         )}
         <div>
+          <button
+            className="button compact primary"
+            disabled={generating}
+            onClick={() => onGeneratePhoto(item.id)}
+            type="button"
+          >
+            {generating ? (
+              <Loader2 aria-hidden="true" className="spin" size={17} />
+            ) : (
+              <Sparkles aria-hidden="true" size={17} />
+            )}
+            {generating ? "Generuji…" : "AI fotka"}
+          </button>
           <button className="button compact" onClick={() => onRequestPhoto(item.id)} type="button">
             <Camera aria-hidden="true" size={17} />
-            {item.photoAssetId ? "Vyměnit" : "Přidat fotku"}
+            {item.photoAssetId ? "Vyměnit" : "Vybrat"}
           </button>
           {item.photoAssetId ? (
             <button
@@ -361,209 +365,6 @@ function PhotoField({
         </div>
       ) : null}
     </>
-  );
-}
-
-function StaticTextFields({
-  slide,
-  onSlideChange
-}: {
-  slide: ManualPresentationSlide;
-  onSlideChange: (slide: ManualPresentationSlide) => void;
-}) {
-  const editable = slide.manifest.layers.filter(
-    (layer) => layer.type === "text" && (!layer.binding || layer.binding.source === "static") && !layer.locked
-  );
-  if (editable.length === 0) return null;
-
-  return (
-    <section className="manual-inspector-section">
-      <p className="eyebrow">Texty slidu</p>
-      {editable.map((layer) =>
-        layer.type === "text" ? (
-          <label key={layer.id}>
-            {manualLayerLabel(layer)}
-            <input
-              maxLength={180}
-              onChange={(event) =>
-                onSlideChange({
-                  ...slide,
-                  manifest: {
-                    ...slide.manifest,
-                    layers: slide.manifest.layers.map((candidate) =>
-                      candidate.id === layer.id && candidate.type === "text"
-                        ? { ...candidate, text: event.target.value }
-                        : candidate
-                    )
-                  }
-                })
-              }
-              value={layer.text ?? ""}
-            />
-          </label>
-        ) : null
-      )}
-    </section>
-  );
-}
-
-function LayerInspector({
-  layer,
-  onChange
-}: {
-  layer: TemplateLayerV2 | null;
-  onChange: (patcher: (layer: TemplateLayerV2) => TemplateLayerV2) => void;
-}) {
-  if (!layer) {
-    return (
-      <section className="manual-inspector-section manual-inspector-empty">
-        <p className="eyebrow">Rozložení prvků</p>
-        <p>Klepněte na prvek v náhledu. Pak ho můžete táhnout nebo přesně nastavit.</p>
-      </section>
-    );
-  }
-
-  return (
-    <section className="manual-inspector-section">
-      <p className="eyebrow">Vybraný prvek</p>
-      <h2>{manualLayerLabel(layer)}</h2>
-      {layer.locked ? <p className="muted">Brandový prvek je zamčený.</p> : null}
-      <div className="manual-frame-grid">
-        {(["x", "y", "w", "h"] as const).map((field) => (
-          <label key={field}>
-            {field.toUpperCase()}
-            <input
-              disabled={layer.locked}
-              min={0}
-              onChange={(event) =>
-                onChange((current) => {
-                  const value = Math.round(Number(event.target.value));
-                  return {
-                    ...current,
-                    frame: {
-                      ...current.frame,
-                      [field]: field === "w" || field === "h" ? Math.max(1, value) : value
-                    }
-                  };
-                })
-              }
-              type="number"
-              value={layer.frame[field]}
-            />
-          </label>
-        ))}
-      </div>
-      {layer.type === "text" ? (
-        <>
-          {(!layer.binding || layer.binding.source === "static") && !layer.locked ? (
-            <label>
-              Text
-              <textarea
-                onChange={(event) =>
-                  onChange((current) =>
-                    current.type === "text" ? { ...current, text: event.target.value } : current
-                  )
-                }
-                rows={2}
-                value={layer.text ?? ""}
-              />
-            </label>
-          ) : null}
-          <label>
-            Velikost písma: {layer.fontSizePx} px
-            <input
-              disabled={layer.locked}
-              max={200}
-              min={30}
-              onChange={(event) =>
-                onChange((current) =>
-                  current.type === "text"
-                    ? { ...current, fontSizePx: Number(event.target.value) }
-                    : current
-                )
-              }
-              step={2}
-              type="range"
-              value={layer.fontSizePx}
-            />
-          </label>
-          <div className="manual-two-columns">
-            <label>
-              Barva
-              <input
-                disabled={layer.locked}
-                onChange={(event) =>
-                  onChange((current) =>
-                    current.type === "text" ? { ...current, color: event.target.value } : current
-                  )
-                }
-                type="color"
-                value={layer.color}
-              />
-            </label>
-            <label>
-              Zarovnání
-              <select
-                disabled={layer.locked}
-                onChange={(event) =>
-                  onChange((current) =>
-                    current.type === "text"
-                      ? {
-                          ...current,
-                          align: event.target.value as "left" | "center" | "right"
-                        }
-                      : current
-                  )
-                }
-                value={layer.align}
-              >
-                <option value="left">Vlevo</option>
-                <option value="center">Na střed</option>
-                <option value="right">Vpravo</option>
-              </select>
-            </label>
-          </div>
-        </>
-      ) : null}
-      {layer.type === "image" ? (
-        <div className="manual-two-columns">
-          <label>
-            Ořez
-            <select
-              disabled={layer.locked}
-              onChange={(event) =>
-                onChange((current) =>
-                  current.type === "image"
-                    ? { ...current, fit: event.target.value as "cover" | "contain" }
-                    : current
-                )
-              }
-              value={layer.fit}
-            >
-              <option value="cover">Vyplnit plochu</option>
-              <option value="contain">Ukázat celou fotku</option>
-            </select>
-          </label>
-          <label>
-            Bez fotografie
-            <select
-              disabled={layer.locked}
-              onChange={(event) =>
-                onChange((current) =>
-                  current.type === "image"
-                    ? { ...current, placeholder: event.target.value as "dish" | "none" }
-                    : current
-                )
-              }
-              value={layer.placeholder}
-            >
-              <option value="dish">Zobrazit zástupný motiv</option>
-              <option value="none">Skrýt prvek</option>
-            </select>
-          </label>
-        </div>
-      ) : null}
-    </section>
   );
 }
 

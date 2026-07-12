@@ -4,15 +4,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   MANUAL_PRESENTATION_MAX_SLIDES,
   buildManualPresentationRenderModel,
+  createManualPresentationItem,
   createManualPresentationManifest,
   createManualPresentationSlideItems,
   getManualPresentationLayout,
   isBlankManualItem,
-  manualItemSection,
   manualPresentationDocumentSchema,
   manualPresentationLayouts,
+  manualSlideGroupItems,
   padManualSlideItems,
   type ManualPresentationDocument,
+  type ManualPresentationItem,
   type ManualPresentationLayoutId,
   type ManualPresentationSlide,
   type SectionKey
@@ -29,7 +31,6 @@ import {
   FilePlus2,
   LayoutTemplate,
   Loader2,
-  Move,
   Plus,
   Save,
   Trash2,
@@ -40,10 +41,19 @@ import type {
   PresentationLocation,
   SavedManualPresentation
 } from "@/lib/manual-presentations";
-import { ManualPresentationCanvas } from "./ManualPresentationCanvas";
 import { ManualPresentationInspector } from "./ManualPresentationInspector";
 import { ManualPhotoPicker } from "./ManualPhotoPicker";
 import { ScaledTvFrame } from "./ScaledTvFrame";
+
+type GeneratedSlideSection = {
+  sectionKey: SectionKey;
+  items: Array<{
+    name: string;
+    description: string;
+    priceCzk: number | null;
+    allergens: ManualPresentationItem["allergens"];
+  }>;
+};
 
 type StudioMessage = { tone: "ok" | "error" | "info"; text: string } | null;
 
@@ -76,8 +86,6 @@ export function ManualPresentationStudio({
   const [presentations, setPresentations] = useState(initialPresentations);
   const [activeSaved, setActiveSaved] = useState<SavedManualPresentation | null>(null);
   const [activeSlideId, setActiveSlideId] = useState(initialDocument.slides[0]!.id);
-  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
-  const [layoutMode, setLayoutMode] = useState(false);
   const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -89,9 +97,10 @@ export function ManualPresentationStudio({
   const [photoTargetItemId, setPhotoTargetItemId] = useState<string | null>(null);
   const [renderJob, setRenderJob] = useState<RenderJobPayload | null>(null);
   const [renderStarting, setRenderStarting] = useState(false);
+  const [generatingSlide, setGeneratingSlide] = useState(false);
+  const [generatingPhotoId, setGeneratingPhotoId] = useState<string | null>(null);
   const attemptedAssetIds = useRef(new Set<string>());
 
-  const mode = layoutMode ? "layout" : "content";
   const activeSlide =
     document.slides.find((slide) => slide.id === activeSlideId) ?? document.slides[0]!;
   const activeSlideIndex = document.slides.findIndex((slide) => slide.id === activeSlide.id);
@@ -105,22 +114,6 @@ export function ManualPresentationStudio({
   const availableCanteens = canteens.filter(
     (canteen) => canteen.locationId === document.locationId
   );
-
-  // Počet viditelných kolonek na aktivním slidu podle skupin — overlay
-  // v režimu rozložení schovává stejné sloty jako TvComposition.
-  const sectionCounts = useMemo(() => {
-    const previewSlide =
-      previewDocument.slides.find((slide) => slide.id === activeSlide.id) ??
-      previewDocument.slides[0]!;
-    const layout = getManualPresentationLayout(previewSlide.baseTemplateId);
-    const counts: Partial<Record<SectionKey, number>> = {};
-    for (const item of previewSlide.items) {
-      if (isBlankManualItem(item)) continue;
-      const key = manualItemSection(item, layout);
-      counts[key] = (counts[key] ?? 0) + 1;
-    }
-    return counts;
-  }, [activeSlide.id, previewDocument]);
 
   useEffect(() => {
     const missing = collectAssetIds(document).filter(
@@ -203,8 +196,6 @@ export function ManualPresentationStudio({
     setDocument(next);
     setActiveSaved(null);
     setActiveSlideId(next.slides[0]!.id);
-    setSelectedLayerId(null);
-    setLayoutMode(false);
     setDirty(false);
     setMessage({ tone: "info", text: "Nová jednorázová prezentace je připravená." });
   }
@@ -225,8 +216,6 @@ export function ManualPresentationStudio({
     setDocument(next);
     setActiveSaved(presentation);
     setActiveSlideId(next.slides[0]!.id);
-    setSelectedLayerId(null);
-    setLayoutMode(false);
     setDirty(false);
     setMessage({ tone: "info", text: `Otevřena uložená prezentace „${presentation.name}“.` });
   }
@@ -240,7 +229,6 @@ export function ManualPresentationStudio({
     slides.splice(insertAt, 0, nextSlide);
     commit({ ...document, slides });
     setActiveSlideId(nextSlide.id);
-    setSelectedLayerId(null);
   }
 
   function duplicateSlide() {
@@ -260,7 +248,6 @@ export function ManualPresentationStudio({
     slides.splice(activeSlideIndex + 1, 0, next);
     commit({ ...document, slides });
     setActiveSlideId(next.id);
-    setSelectedLayerId(null);
   }
 
   function deleteSlide() {
@@ -268,7 +255,6 @@ export function ManualPresentationStudio({
     const slides = document.slides.filter((slide) => slide.id !== activeSlide.id);
     commit({ ...document, slides });
     setActiveSlideId(slides[Math.max(0, activeSlideIndex - 1)]!.id);
-    setSelectedLayerId(null);
   }
 
   function moveSlide(direction: -1 | 1) {
@@ -310,7 +296,6 @@ export function ManualPresentationStudio({
       manifest: createManualPresentationManifest(layoutId, activeSlide.id),
       items: slots
     });
-    setSelectedLayerId(null);
   }
 
   async function saveLongTerm() {
@@ -534,6 +519,103 @@ export function ManualPresentationStudio({
       });
     } finally {
       setRenderStarting(false);
+    }
+  }
+
+  /** AI návrh obsahu aktivního slidu — vyplní kolonky, člověk pak upraví. */
+  async function generateActiveSlide() {
+    if (generatingSlide) return;
+    setGeneratingSlide(true);
+    setMessage(null);
+    try {
+      const avoidNames = document.slides
+        .filter((slide) => slide.id !== activeSlide.id)
+        .flatMap((slide) => slide.items)
+        .filter((item) => !isBlankManualItem(item))
+        .map((item) => item.name);
+      const hint =
+        document.name.trim() && document.name.trim() !== "Nová prezentace"
+          ? document.name.trim()
+          : undefined;
+      const response = await fetch("/api/presentations/generate-slide", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ layoutId: activeSlide.baseTemplateId, hint, avoidNames })
+      });
+      const body = (await response.json().catch(() => null)) as
+        | { sections?: GeneratedSlideSection[]; error?: string }
+        | null;
+      if (!response.ok || !body?.sections) {
+        throw new Error(body?.error ?? `Generování slidu selhalo (${response.status}).`);
+      }
+      updateActiveSlide({
+        ...activeSlide,
+        items: applyGeneratedToSlide(activeSlide, body.sections)
+      });
+      setMessage({
+        tone: "ok",
+        text: "Slide navržený AI — projděte a upravte texty, ceny i alergeny. Fotky doplníte tlačítkem u položky."
+      });
+    } catch (error) {
+      setMessage({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Generování slidu selhalo."
+      });
+    } finally {
+      setGeneratingSlide(false);
+    }
+  }
+
+  /** AI fotka konkrétní položky — vygeneruje, uloží do knihovny a přiřadí. */
+  async function generatePhotoForItem(itemId: string) {
+    const item = activeSlide.items.find((candidate) => candidate.id === itemId);
+    if (!item || isBlankManualItem(item)) {
+      setMessage({ tone: "info", text: "Nejdřív vyplňte název jídla, pak vygenerujte fotku." });
+      return;
+    }
+    if (generatingPhotoId) return;
+    setGeneratingPhotoId(itemId);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/dish-photos/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          dishName: item.name,
+          description: item.description || undefined,
+          canteenId: document.canteenId
+        })
+      });
+      const body = (await response.json().catch(() => null)) as
+        | { assetId?: string; signedUrl?: string | null; error?: string }
+        | null;
+      if (!response.ok || !body?.assetId) {
+        throw new Error(body?.error ?? `Generování fotky selhalo (${response.status}).`);
+      }
+      const assetId = body.assetId;
+      if (body.signedUrl) {
+        setAssetUrls((current) => ({ ...current, [assetId]: body.signedUrl! }));
+      }
+      updateActiveSlide({
+        ...activeSlide,
+        items: activeSlide.items.map((candidate) =>
+          candidate.id === itemId
+            ? {
+                ...candidate,
+                photoAssetId: assetId,
+                photoSource: "ai",
+                photoFocalPoint: { x: 0.5, y: 0.5 }
+              }
+            : candidate
+        )
+      });
+    } catch (error) {
+      setMessage({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Generování fotky selhalo."
+      });
+    } finally {
+      setGeneratingPhotoId(null);
     }
   }
 
@@ -775,10 +857,7 @@ export function ManualPresentationStudio({
               <button
                 className={`manual-slide-thumb ${slide.id === activeSlide.id ? "active" : ""}`}
                 key={slide.id}
-                onClick={() => {
-                  setActiveSlideId(slide.id);
-                  setSelectedLayerId(null);
-                }}
+                onClick={() => setActiveSlideId(slide.id)}
                 type="button"
               >
                 <span>{index + 1}</span>
@@ -828,47 +907,32 @@ export function ManualPresentationStudio({
 
         <main className="manual-stage-column">
           <div className="manual-stage-head">
-            <strong>{getManualPresentationLayout(activeSlide.baseTemplateId).label}</strong>
-            <button
-              aria-pressed={layoutMode}
-              className={`manual-layout-toggle ${layoutMode ? "active" : ""}`}
-              onClick={() => {
-                setLayoutMode((current) => !current);
-                setSelectedLayerId(null);
-              }}
-              type="button"
-            >
-              <Move aria-hidden="true" size={17} />
-              Přesouvat prvky
-            </button>
+            <strong>
+              Slide {activeSlideIndex + 1}/{document.slides.length} ·{" "}
+              {getManualPresentationLayout(activeSlide.baseTemplateId).label}
+            </strong>
+            <span className="manual-stage-hint">Náhled je přesně to, co poběží na TV.</span>
           </div>
           <div className="manual-stage card">
-            <ManualPresentationCanvas
-              activeSlideId={activeSlide.id}
-              deck={renderModel.deck}
-              manifest={activeSlide.manifest}
-              menu={renderModel.menu}
-              mode={mode}
-              onManifestChange={(manifest) => updateActiveSlide({ ...activeSlide, manifest })}
-              onSelectLayer={setSelectedLayerId}
-              sectionCounts={sectionCounts}
-              selectedLayerId={selectedLayerId}
-            />
+            <ScaledTvFrame>
+              <TvComposition
+                activeSlideId={activeSlide.id}
+                deck={renderModel.deck}
+                menu={renderModel.menu}
+              />
+            </ScaledTvFrame>
           </div>
-          {layoutMode ? (
-            <p className="manual-stage-help">
-              Klikněte na prvek a táhněte ho. Úchopy mění velikost; brandové prvky zůstávají zamčené.
-            </p>
-          ) : null}
         </main>
 
         <ManualPresentationInspector
           assetUrls={assetUrls}
-          mode={mode}
+          generatingPhotoId={generatingPhotoId}
+          generatingSlide={generatingSlide}
           onChangeLayout={changeSlideLayout}
+          onGeneratePhoto={(itemId) => void generatePhotoForItem(itemId)}
+          onGenerateSlide={() => void generateActiveSlide()}
           onRequestPhoto={setPhotoTargetItemId}
           onSlideChange={updateActiveSlide}
-          selectedLayerId={selectedLayerId}
           slide={activeSlide}
         />
       </div>
@@ -945,6 +1009,46 @@ export function ManualPresentationStudio({
       ) : null}
     </div>
   );
+}
+
+/**
+ * AI návrh (sekce → položky) namapuje na pevné sloty slidu: zachová id kolonek,
+ * přepíše obsah, přebytek přes kapacitu zahodí a nevyplněné sloty vyčistí.
+ * Fotky se při generování obsahu ruší — jídlo se změnilo, stará fotka by neseděla.
+ */
+function applyGeneratedToSlide(
+  slide: ManualPresentationSlide,
+  sections: GeneratedSlideSection[]
+): ManualPresentationItem[] {
+  const layout = getManualPresentationLayout(slide.baseTemplateId);
+  const generatedBySection = new Map(sections.map((section) => [section.sectionKey, section.items]));
+  const existingBySection = manualSlideGroupItems(slide.items, layout);
+
+  return layout.slotGroups.flatMap((group) => {
+    const generated = generatedBySection.get(group.sectionKey) ?? [];
+    const slots = existingBySection.get(group.sectionKey) ?? [];
+    return Array.from({ length: group.capacity }, (_, index) => {
+      const base = slots[index] ?? createManualPresentationItem(group.sectionKey);
+      const proposal = generated[index];
+      const cleared: ManualPresentationItem = {
+        ...base,
+        sectionKey: group.sectionKey,
+        photoAssetId: null,
+        photoSource: null,
+        photoFocalPoint: { x: 0.5, y: 0.5 }
+      };
+      if (!proposal) {
+        return { ...cleared, name: "", description: "", priceCzk: null, allergens: [] };
+      }
+      return {
+        ...cleared,
+        name: proposal.name,
+        description: group.description ? proposal.description : "",
+        priceCzk: proposal.priceCzk,
+        allergens: proposal.allergens
+      };
+    });
+  });
 }
 
 function createClientSlide(baseTemplateId: ManualPresentationLayoutId): ManualPresentationSlide {

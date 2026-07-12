@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   menuExtractionJsonSchema,
   parseWeekExtractionOutput,
+  slideGenerationJsonSchema,
   weekExtractionJsonSchema
 } from "./openai";
 
@@ -38,6 +39,10 @@ describe("openai extraction schemas", () => {
 
   it("menu extraction JSON schema is OpenAI-strict", () => {
     assertOpenAiStrict(menuExtractionJsonSchema(), "menu");
+  });
+
+  it("slide generation JSON schema is OpenAI-strict", () => {
+    assertOpenAiStrict(slideGenerationJsonSchema(), "slide");
   });
 
   it("parses a realistic LLM week payload into the internal shape", () => {
