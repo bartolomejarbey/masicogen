@@ -695,20 +695,33 @@ function TextLayer({
     return null;
   }
 
+  // Chytré přizpůsobení: dlouhý text se nikdy neořízne — písmo se zmenší tak,
+  // aby se celý vešel do svého boxu (šířka × povolené řádky).
+  const fontSizePx = fitFontSizeToBox(content, layer);
+  // Verzálky/diakritika (Í, É, Ř…) přesahují nad účaří; s line-height 1 by je
+  // overflow ořízl. Přidáme nahoře místo o accentPad a text posuneme zpět dolů,
+  // takže pozice zůstává stejná, jen se čárky/háčky nad písmeny neuseknou.
+  const accentPad = Math.ceil(fontSizePx * 0.24);
+
   return (
     <div
       style={{
         ...frame,
+        top: `${layer.frame.y - accentPad}px`,
+        height: `${layer.frame.h + accentPad}px`,
+        paddingTop: `${accentPad}px`,
+        boxSizing: "border-box",
         display: "-webkit-box",
         WebkitBoxOrient: "vertical",
         WebkitLineClamp: layer.maxLines,
         overflow: "hidden",
+        wordBreak: "break-word",
         // line-clamp jen přidává výpustku; skutečný ořez je overflow na výšce
-        // boxu — maxHeight zabrání prosvítání dalšího řádku.
-        maxHeight: `${Math.ceil(layer.maxLines * layer.fontSizePx * layer.lineHeight) + 4}px`,
+        // boxu — maxHeight (+ accentPad) zabrání prosvítání dalšího řádku.
+        maxHeight: `${Math.ceil(layer.maxLines * fontSizePx * layer.lineHeight) + accentPad + 4}px`,
         color: layer.color,
         textAlign: layer.align,
-        fontSize: `${layer.fontSizePx}px`,
+        fontSize: `${fontSizePx}px`,
         fontWeight: layer.fontWeight,
         fontStyle: layer.fontStyle,
         lineHeight: layer.lineHeight,
@@ -726,6 +739,32 @@ function TextLayer({
  */
 function fixCzechTypography(value: string) {
   return value.replace(/(^|[\s(„])([szkvouaiSZKVOUAI])[ ]+/g, "$1$2 ");
+}
+
+/**
+ * Chytré přizpůsobení velikosti písma: odhadne, zda se text vejde do svého
+ * boxu (šířka × povolené řádky), a když ne, postupně zmenšuje písmo až po
+ * čitelné minimum. Cílem je, aby se dlouhý název NIKDY neořízl výpustkou.
+ * Odhad šířky znaku je konzervativní (radši zmenšit víc než uříznout).
+ */
+function fitFontSizeToBox(text: string, layer: TextLayerV2): number {
+  const base = layer.fontSizePx;
+  const chars = text.trim().length;
+  if (chars === 0 || layer.frame.w <= 0) {
+    return base;
+  }
+  const minSize = Math.max(20, Math.round(base * 0.6));
+  // Poměr průměrné šířky znaku k velikosti písma (Lora); verzálky jsou širší.
+  const avgCharRatio = layer.uppercase ? 0.62 : 0.52;
+  let size = base;
+  while (size > minSize) {
+    const perLine = Math.floor(layer.frame.w / (size * avgCharRatio));
+    if (perLine > 0 && perLine * layer.maxLines >= chars) {
+      break;
+    }
+    size -= 1;
+  }
+  return size;
 }
 
 function resolveTextContent(
