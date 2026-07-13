@@ -4539,6 +4539,363 @@ a {
   overflow-y: auto;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Průvodce 1-2-3 (domovská obrazovka) — velké, jednoduché, pro seniory.
+   ───────────────────────────────────────────────────────────────────────── */
+.pruvodce {
+  display: grid;
+  gap: 22px;
+  max-width: 940px;
+  margin: 0 auto;
+}
+
+.pruvodce-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pruvodce-datum {
+  margin: 0;
+  color: var(--red);
+  font-size: 15px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pruvodce-title {
+  margin: 4px 0 0;
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.pruvodce-role {
+  flex: 0 0 auto;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* Stepper 1-2-3 */
+.pruvodce-kroky {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pruvodce-krok {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.pruvodce-krok.aktivni {
+  border-color: var(--red);
+  background: #fff;
+  color: var(--text);
+}
+
+.pruvodce-krok.hotovo {
+  border-color: rgba(31, 122, 77, 0.45);
+  color: var(--green);
+}
+
+.pruvodce-krok-cislo {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--border);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.pruvodce-krok.aktivni .pruvodce-krok-cislo {
+  background: var(--red);
+}
+
+.pruvodce-krok.hotovo .pruvodce-krok-cislo {
+  background: var(--green);
+}
+
+.pruvodce-krok-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* Panel jednoho kroku */
+.pruvodce-panel {
+  display: grid;
+  gap: 20px;
+  padding: 26px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.pruvodce-panel-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 25px;
+  font-weight: 900;
+}
+
+.pruvodce-panel-head p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.pruvodce-cislo-velky {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+/* Krok 1 — pole na jídla */
+.pruvodce-skupina {
+  display: grid;
+  gap: 10px;
+}
+
+.pruvodce-skupina-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.pruvodce-radky {
+  display: grid;
+  gap: 8px;
+}
+
+.pruvodce-radek {
+  display: grid;
+  grid-template-columns: 1fr 96px 168px;
+  gap: 8px;
+}
+
+.pruvodce-radek input {
+  min-height: 54px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 0 14px;
+  color: var(--text);
+  background: #fff;
+  font-size: 17px;
+}
+
+.pruvodce-radek input:focus {
+  border-color: var(--red);
+  outline: none;
+}
+
+.pruvodce-cena {
+  text-align: center;
+}
+
+/* Navigace mezi kroky */
+.pruvodce-navigace {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pruvodce-pocet {
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.pruvodce-tlacitko {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 24px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  background: #fff;
+  font-size: 18px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.pruvodce-tlacitko:hover:not(:disabled) {
+  border-color: var(--text);
+}
+
+.pruvodce-tlacitko.primary {
+  border-color: var(--red);
+  color: #fff;
+  background: var(--red);
+  margin-left: auto;
+}
+
+.pruvodce-tlacitko.velke {
+  min-height: 66px;
+  padding: 0 34px;
+  font-size: 21px;
+}
+
+.pruvodce-tlacitko:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Krok 2 — náhled TV */
+.pruvodce-nahled {
+  overflow: hidden;
+  border-radius: 12px;
+  background: #25211e;
+  padding: 12px;
+}
+
+.pruvodce-nahled-prepinac {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pruvodce-nahled-prepinac button {
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pruvodce-nahled-prepinac button.active {
+  border-color: var(--red);
+  color: #fff;
+  background: var(--red);
+}
+
+.pruvodce-nahled-prazdno {
+  padding: 40px;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* Krok 3 — souhrn + spuštění */
+.pruvodce-souhrn {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.pruvodce-souhrn > div {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.pruvodce-souhrn-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pruvodce-souhrn strong {
+  font-size: 18px;
+}
+
+.pruvodce-hotovo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 2px solid rgba(31, 122, 77, 0.45);
+  border-radius: 12px;
+  background: rgba(31, 122, 77, 0.08);
+  color: var(--green);
+}
+
+.pruvodce-hotovo > div {
+  display: grid;
+  flex: 1;
+}
+
+.pruvodce-hotovo strong {
+  font-size: 18px;
+}
+
+.pruvodce-hotovo span {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.pruvodce-chyba {
+  padding: 14px 18px;
+  border: 2px solid rgba(183, 28, 28, 0.4);
+  border-radius: 12px;
+  background: rgba(183, 28, 28, 0.06);
+  color: var(--red);
+  font-size: 16px;
+  font-weight: 750;
+}
+
+@media (max-width: 720px) {
+  .pruvodce-radek {
+    grid-template-columns: 1fr;
+  }
+  .pruvodce-kroky {
+    grid-template-columns: 1fr;
+  }
+  .pruvodce-souhrn {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── Prezentace: přepínač Obsah/Rozvržení nad náhledem ─────────────────── */
 .prez-mode-switch {
   display: inline-flex;

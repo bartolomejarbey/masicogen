@@ -12,10 +12,8 @@ import {
   Utensils
 } from "lucide-react";
 import { demoDeck, demoMenu, formatCzechDate } from "@masico/shared";
-import { AutopilotBanner } from "@/components/AutopilotBanner";
+import { DenniPruvodce } from "@/components/DenniPruvodce";
 import { MenuReview } from "@/components/MenuReview";
-import { ProductionQuickLaunch } from "@/components/ProductionQuickLaunch";
-import { WeekStrip } from "@/components/WeekStrip";
 import { StatusBadge } from "@/components/StatusBadge";
 import { StudioShell } from "@/components/StudioShell";
 import { TvStudioClient } from "@/components/TvStudioClient";
@@ -232,63 +230,11 @@ function ProductionHome({
   snapshot: ProductionDashboardSnapshot;
 }) {
   return (
-    <>
-      <div className="topbar">
-        <div>
-          <p className="eyebrow">Dnes · {formatCzechDate(snapshot.todayIso)}</p>
-          <h1 className="page-title">Pustit dnešní menu na TV</h1>
-          <p className="page-copy">
-            {snapshot.dataError
-              ? "Přihlášení funguje, ale data se nepodařilo načíst. Dokud se to neopraví, stránka schová denní spuštění."
-              : `Přihlášeno: ${getRoleLabel(access.role)} · ${snapshot.orgName}`}
-          </p>
-        </div>
-      </div>
-
-      {snapshot.dataError ? (
-        <ProductionDataError error={snapshot.dataError} />
-      ) : (
-        <>
-          <AutopilotBanner snapshot={snapshot} />
-
-          <section className="day-entry-card" aria-label="Denní menu">
-            <div>
-              <h2>Dnešní menu po jídlech</h2>
-              <p>
-                Nový přehledný formulář: polévky, hlavní jídla, pizza, bufet a dezerty
-                s fotkami a živým náhledem TV.
-              </p>
-            </div>
-            <div className="actions">
-              <a className="button primary large" href={`/den/${snapshot.todayIso}`}>
-                <CalendarPlus size={22} aria-hidden="true" />
-                Upravit dnešní menu
-              </a>
-              <a className="button" href="/tyden">
-                Nahrát týdenní lístek
-              </a>
-            </div>
-          </section>
-
-          <WeekStrip snapshot={snapshot} />
-
-          <details className="settings-details">
-            <summary>
-              <span>Pokročilé: vložit menu jako text</span>
-              <small>Původní rychlé spuštění z vloženého textu</small>
-            </summary>
-            <ProductionQuickLaunch
-              canLaunch={canLaunchToday(access.role)}
-              roleLabel={getRoleLabel(access.role)}
-              snapshot={snapshot}
-            />
-          </details>
-
-          <ProductionTodaySummary snapshot={snapshot} />
-          <ProductionSettings access={access} snapshot={snapshot} />
-        </>
-      )}
-    </>
+    <DenniPruvodce
+      canLaunch={canLaunchToday(access.role)}
+      roleLabel={getRoleLabel(access.role)}
+      snapshot={snapshot}
+    />
   );
 }
 
