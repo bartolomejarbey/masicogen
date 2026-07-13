@@ -150,6 +150,32 @@ export function isBlankManualItem(item: Pick<ManualPresentationItem, "name">) {
   return item.name.trim().length === 0;
 }
 
+/** Umí rozložení vůbec fotky jídel? Přepínač fotek dává smysl jen tam. */
+export function layoutSupportsPhotos(layoutId: ManualPresentationLayoutId): boolean {
+  return getManualPresentationLayout(layoutId).slotGroups.some((group) => group.photo);
+}
+
+/** Má některá vyplněná položka slidu přiřazenou fotku? */
+export function slideHasAnyPhoto(items: ManualPresentationItem[]): boolean {
+  return items.some((item) => !isBlankManualItem(item) && Boolean(item.photoAssetId));
+}
+
+/**
+ * Efektivní stav „kreslit fotky jídel?": ruční přepínač má přednost, jinak se
+ * odvodí z přítomnosti fotek (kvůli starším dokumentům bez `photosEnabled`).
+ * Rozložení bez foto slotů kreslí fotky nikdy.
+ */
+export function slideShowsPhotos(slide: {
+  baseTemplateId: ManualPresentationLayoutId;
+  photosEnabled?: boolean;
+  items: ManualPresentationItem[];
+}): boolean {
+  if (!layoutSupportsPhotos(slide.baseTemplateId)) {
+    return false;
+  }
+  return slide.photosEnabled ?? slideHasAnyPhoto(slide.items);
+}
+
 /** Položky slidu roztříděné do skupin slotů, v pořadí zápisu. */
 export function manualSlideGroupItems(
   items: ManualPresentationItem[],
@@ -219,6 +245,12 @@ export const manualPresentationSlideSchema = z
     title: z.string().trim().min(1).max(140),
     baseTemplateId: manualPresentationLayoutSchema,
     durationSeconds: z.number().int().min(3).max(60).default(10),
+    /**
+     * Chce slide layout s fotkami jídel? Nevyplněno u starších dokumentů →
+     * efektivní stav se odvodí z přítomnosti fotek (viz `slideShowsPhotos`).
+     * UI přepínač ho nastaví natvrdo, takže „fotky vypnuto" drží i bez fotek.
+     */
+    photosEnabled: z.boolean().optional(),
     manifest: templateManifestV2Schema,
     items: z.array(manualPresentationItemSchema).min(1).max(MAX_SLOTS_PER_SLIDE)
   })
@@ -369,12 +401,13 @@ function applyNoPhotoLayout(
   manifest: TemplateManifestV2,
   layoutId: ManualPresentationLayoutId
 ): TemplateManifestV2 {
-  if (layoutId !== "mains-grid" && layoutId !== "soups-duo") {
+  if (!layoutSupportsPhotos(layoutId)) {
     return manifest;
   }
   return {
     ...manifest,
     layers: manifest.layers.map((layer) => {
+      // Foto jídla se v no-photo variantě nikdy nekreslí (žádné placeholdery).
       if (
         layer.type === "image" &&
         layer.binding?.source === "item" &&
@@ -382,9 +415,11 @@ function applyNoPhotoLayout(
       ) {
         return { ...layer, placeholder: "none" as const };
       }
+      // Hlavní jídla: název se roztáhne na místo po fotce (čistý seznam).
       if (layoutId === "mains-grid" && layer.type === "text" && /^main-\d+-name$/.test(layer.id)) {
         return { ...layer, frame: { ...layer.frame, x: 128, w: 1264 } };
       }
+      // Polévky: karta se změní na textovou (velký název, výrazná cena, alergeny).
       if (layoutId === "soups-duo") {
         if (layer.type === "shape" && /^soup-\d+-card$/.test(layer.id)) {
           return { ...layer, frame: { ...layer.frame, y: 288, h: 504 } };
@@ -397,6 +432,18 @@ function applyNoPhotoLayout(
         }
         if (layer.type === "text" && /^soup-\d+-allergens$/.test(layer.id)) {
           return { ...layer, fontSizePx: 40, frame: { ...layer.frame, y: 668, h: 60 } };
+        }
+      }
+      // Pizza dne: text se roztáhne přes celou plochu po velké fotce vpravo.
+      if (layoutId === "pizza-day") {
+        if (layer.type === "text" && (layer.id === "pizza-name" || layer.id === "pizza-description")) {
+          return { ...layer, frame: { ...layer.frame, w: 1664 } };
+        }
+      }
+      // Dnes navíc: název karty vyplní místo po fotce nahoře.
+      if (layoutId === "special-day") {
+        if (layer.type === "text" && /^special-\d+-name$/.test(layer.id)) {
+          return { ...layer, fontSizePx: 50, maxLines: 5, frame: { ...layer.frame, y: 300, h: 400 } };
         }
       }
       return layer;
@@ -466,13 +513,10 @@ export function buildManualPresentationRenderModel(
       sections.set(group.sectionKey, section);
     }
 
-    // Slide bez jediné fotky = čistý no-photo layout (žádné prázdné foto
-    // plochy ani placeholdery). Se snímky zůstává původní layout beze změny.
-    const slideHasPhoto = slide.items.some(
-      (item) => !isBlankManualItem(item) && item.photoAssetId
-    );
+    // Fotky vypnuté (ruční přepínač nebo žádné snímky) = čistý no-photo layout
+    // bez prázdných foto ploch a placeholderů. Zapnuté = původní layout.
     menuItemIdsBySlide.set(slide.id, slideItemIds);
-    templateManifests[slide.manifest.id] = slideHasPhoto
+    templateManifests[slide.manifest.id] = slideShowsPhotos(slide)
       ? slide.manifest
       : applyNoPhotoLayout(slide.manifest, slide.baseTemplateId);
   }

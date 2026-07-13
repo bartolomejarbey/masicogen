@@ -4,18 +4,24 @@ import {
   allergenCatalog,
   getManualPresentationLayout,
   isBlankManualItem,
+  layoutSupportsPhotos,
   manualItemSection,
   manualPresentationLayouts,
+  slideShowsPhotos,
   type AllergenCode,
   type ManualPresentationItem,
   type ManualPresentationLayoutId,
   type ManualPresentationSlide,
   type ManualPresentationSlotGroup
 } from "@masico/shared";
-import { Camera, Eraser, ImageOff, Loader2, Sparkles } from "lucide-react";
+import { Camera, Eraser, ImageOff, Images, Loader2, Sparkles } from "lucide-react";
 import Image from "next/image";
 
-export function ManualPresentationInspector({
+/**
+ * Pravý panel v režimu „Obsah": vyplňování kolonek slidu, přepínač fotek a AI
+ * návrh. Rozvržení (drag-n-drop) řeší samostatný panel v režimu „Rozvržení".
+ */
+export function ContentInspector({
   slide,
   assetUrls,
   generatingSlide,
@@ -60,6 +66,8 @@ export function ManualPresentationInspector({
         )}
         {generatingSlide ? "Generuji obsah slidu…" : "Vygenerovat obsah slidu (AI)"}
       </button>
+
+      <PhotosToggle onSlideChange={onSlideChange} slide={slide} />
 
       <section className="manual-inspector-section">
         <p className="eyebrow">Slide</p>
@@ -109,9 +117,56 @@ export function ManualPresentationInspector({
           onGeneratePhoto={onGeneratePhoto}
           onRequestPhoto={onRequestPhoto}
           onUpdateItem={updateItem}
+          showPhotos={slideShowsPhotos(slide)}
         />
       ))}
     </aside>
+  );
+}
+
+/**
+ * Přepínač „S fotkami / Bez fotek". Mění layout slidu (fotky se automaticky
+ * přeskládají na čistý text). U rozložení bez foto slotů se nezobrazuje.
+ */
+function PhotosToggle({
+  slide,
+  onSlideChange
+}: {
+  slide: ManualPresentationSlide;
+  onSlideChange: (slide: ManualPresentationSlide) => void;
+}) {
+  if (!layoutSupportsPhotos(slide.baseTemplateId)) {
+    return null;
+  }
+  const showsPhotos = slideShowsPhotos(slide);
+  return (
+    <section className="manual-inspector-section">
+      <p className="eyebrow">
+        <Images aria-hidden="true" size={14} /> Fotky jídel
+      </p>
+      <div className="prez-photos-toggle" role="group" aria-label="Zobrazení fotek">
+        <button
+          aria-pressed={showsPhotos}
+          className={`prez-photos-option ${showsPhotos ? "active" : ""}`}
+          onClick={() => onSlideChange({ ...slide, photosEnabled: true })}
+          type="button"
+        >
+          <Camera aria-hidden="true" size={16} /> S fotkami
+        </button>
+        <button
+          aria-pressed={!showsPhotos}
+          className={`prez-photos-option ${!showsPhotos ? "active" : ""}`}
+          onClick={() => onSlideChange({ ...slide, photosEnabled: false })}
+          type="button"
+        >
+          <ImageOff aria-hidden="true" size={16} /> Bez fotek
+        </button>
+      </div>
+      <small className="prez-photos-hint">
+        Bez fotek se rozvržení automaticky přeskládá na čistý text — žádné prázdné rámečky ani
+        placeholdery.
+      </small>
+    </section>
   );
 }
 
@@ -124,6 +179,7 @@ function SlotGroupEditor({
   items,
   assetUrls,
   generatingPhotoId,
+  showPhotos,
   onUpdateItem,
   onRequestPhoto,
   onGeneratePhoto
@@ -132,6 +188,7 @@ function SlotGroupEditor({
   items: ManualPresentationItem[];
   assetUrls: Record<string, string>;
   generatingPhotoId: string | null;
+  showPhotos: boolean;
   onUpdateItem: (itemId: string, patch: Partial<ManualPresentationItem>) => void;
   onRequestPhoto: (itemId: string) => void;
   onGeneratePhoto: (itemId: string) => void;
@@ -248,7 +305,7 @@ function SlotGroupEditor({
                       />
                     </label>
                   ) : null}
-                  {group.photo ? (
+                  {group.photo && showPhotos ? (
                     <PhotoField
                       assetUrls={assetUrls}
                       generating={generatingPhotoId === item.id}

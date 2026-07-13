@@ -31,6 +31,8 @@ import {
   FilePlus2,
   LayoutTemplate,
   Loader2,
+  Move,
+  Pencil,
   Plus,
   Save,
   Trash2,
@@ -41,9 +43,11 @@ import type {
   PresentationLocation,
   SavedManualPresentation
 } from "@/lib/manual-presentations";
-import { ManualPresentationInspector } from "./ManualPresentationInspector";
-import { ManualPhotoPicker } from "./ManualPhotoPicker";
-import { ScaledTvFrame } from "./ScaledTvFrame";
+import { ContentInspector } from "./ContentInspector";
+import { LayoutInspector } from "./LayoutInspector";
+import { LayerEditorOverlay } from "./LayerEditorOverlay";
+import { ManualPhotoPicker } from "../ManualPhotoPicker";
+import { ScaledTvFrame } from "../ScaledTvFrame";
 
 type GeneratedSlideSection = {
   sectionKey: SectionKey;
@@ -56,6 +60,7 @@ type GeneratedSlideSection = {
 };
 
 type StudioMessage = { tone: "ok" | "error" | "info"; text: string } | null;
+type EditorMode = "content" | "layout";
 
 type RenderJobPayload = {
   id: string;
@@ -67,7 +72,7 @@ type RenderJobPayload = {
 
 const ACTIVE_RENDER_STATUSES = new Set(["queued", "leased", "running", "retrying"]);
 
-export function ManualPresentationStudio({
+export function PrezentaceStudio({
   initialDocument,
   initialPresentations,
   locations,
@@ -86,6 +91,8 @@ export function ManualPresentationStudio({
   const [presentations, setPresentations] = useState(initialPresentations);
   const [activeSaved, setActiveSaved] = useState<SavedManualPresentation | null>(null);
   const [activeSlideId, setActiveSlideId] = useState(initialDocument.slides[0]!.id);
+  const [mode, setMode] = useState<EditorMode>("content");
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -109,6 +116,33 @@ export function ManualPresentationStudio({
     () => buildManualPresentationRenderModel(previewDocument, { assetUrls }),
     [assetUrls, previewDocument]
   );
+
+  // V režimu rozvržení kreslíme přesně editovaný manifest (bez no-photo
+  // transformace), aby drag overlay seděl 1:1 na náhled.
+  const stageDeck = useMemo(() => {
+    if (mode !== "layout") return renderModel.deck;
+    return {
+      ...renderModel.deck,
+      templateManifests: {
+        ...renderModel.deck.templateManifests,
+        [activeSlide.manifest.id]: activeSlide.manifest
+      }
+    };
+  }, [mode, renderModel.deck, activeSlide.manifest]);
+
+  // Počet vyplněných kolonek podle skupin — overlay schová stejné sloty jako TV.
+  const sectionCounts = useMemo(() => {
+    const layout = getManualPresentationLayout(activeSlide.baseTemplateId);
+    const groups = manualSlideGroupItems(activeSlide.items, layout);
+    const counts: Partial<Record<SectionKey, number>> = {};
+    for (const group of layout.slotGroups) {
+      counts[group.sectionKey] = (groups.get(group.sectionKey) ?? []).filter(
+        (item) => !isBlankManualItem(item)
+      ).length;
+    }
+    return counts;
+  }, [activeSlide]);
+
   const photoTarget = activeSlide.items.find((item) => item.id === photoTargetItemId) ?? null;
   const contextLocked = Boolean(activeSaved);
   const availableCanteens = canteens.filter(
@@ -132,7 +166,6 @@ export function ManualPresentationStudio({
             | null;
           return [assetId, body?.photos?.[0]?.signedUrl ?? null] as const;
         } catch {
-          // Výpadek sítě nesmí fotku zablokovat trvale — povolit další pokus.
           attemptedAssetIds.current.delete(assetId);
           return [assetId, null] as const;
         }
@@ -143,10 +176,7 @@ export function ManualPresentationStudio({
         (entry): entry is readonly [string, string] => Boolean(entry[1])
       );
       if (resolved.length === 0) return;
-      setAssetUrls((current) => ({
-        ...current,
-        ...Object.fromEntries(resolved)
-      }));
+      setAssetUrls((current) => ({ ...current, ...Object.fromEntries(resolved) }));
     });
 
     return () => {
@@ -188,6 +218,18 @@ export function ManualPresentationStudio({
     });
   }
 
+  // Přepnutí slidu i režimu vždy zruší rozpracovaný výběr vrstvy — jinak by
+  // zůstal viset na neexistujícím/jiném prvku.
+  function selectSlide(id: string) {
+    setActiveSlideId(id);
+    setSelectedLayerId(null);
+  }
+
+  function changeMode(next: EditorMode) {
+    setMode(next);
+    setSelectedLayerId(null);
+  }
+
   function startNew() {
     if (dirty && !window.confirm("Rozpracované změny nejsou uložené. Opravdu začít novou prezentaci?")) {
       return;
@@ -195,7 +237,8 @@ export function ManualPresentationStudio({
     const next = createNewDocument(initialDocument, document.locationId, document.canteenId);
     setDocument(next);
     setActiveSaved(null);
-    setActiveSlideId(next.slides[0]!.id);
+    selectSlide(next.slides[0]!.id);
+    setMode("content");
     setDirty(false);
     setMessage({ tone: "info", text: "Nová jednorázová prezentace je připravená." });
   }
@@ -205,7 +248,6 @@ export function ManualPresentationStudio({
       return;
     }
     const source = structuredClone(presentation.document);
-    // Starší uložené dokumenty mají jen vyplněné položky — doplnit kolonky.
     const next: ManualPresentationDocument = {
       ...source,
       slides: source.slides.map((slide) => ({
@@ -215,7 +257,8 @@ export function ManualPresentationStudio({
     };
     setDocument(next);
     setActiveSaved(presentation);
-    setActiveSlideId(next.slides[0]!.id);
+    selectSlide(next.slides[0]!.id);
+    setMode("content");
     setDirty(false);
     setMessage({ tone: "info", text: `Otevřena uložená prezentace „${presentation.name}“.` });
   }
@@ -228,7 +271,7 @@ export function ManualPresentationStudio({
     const slides = [...document.slides];
     slides.splice(insertAt, 0, nextSlide);
     commit({ ...document, slides });
-    setActiveSlideId(nextSlide.id);
+    selectSlide(nextSlide.id);
   }
 
   function duplicateSlide() {
@@ -247,14 +290,14 @@ export function ManualPresentationStudio({
     const slides = [...document.slides];
     slides.splice(activeSlideIndex + 1, 0, next);
     commit({ ...document, slides });
-    setActiveSlideId(next.id);
+    selectSlide(next.id);
   }
 
   function deleteSlide() {
     if (document.slides.length === 1) return;
     const slides = document.slides.filter((slide) => slide.id !== activeSlide.id);
     commit({ ...document, slides });
-    setActiveSlideId(slides[Math.max(0, activeSlideIndex - 1)]!.id);
+    selectSlide(slides[Math.max(0, activeSlideIndex - 1)]!.id);
   }
 
   function moveSlide(direction: -1 | 1) {
@@ -285,7 +328,6 @@ export function ManualPresentationStudio({
       return;
     }
 
-    // Vyplněná jídla přetečou do kolonek nového slidu v původním pořadí.
     filled.slice(0, slots.length).forEach((item, index) => {
       slots[index] = { ...item, sectionKey: slots[index]!.sectionKey };
     });
@@ -296,6 +338,19 @@ export function ManualPresentationStudio({
       manifest: createManualPresentationManifest(layoutId, activeSlide.id),
       items: slots
     });
+  }
+
+  function updateActiveManifest(manifest: ManualPresentationSlide["manifest"]) {
+    updateActiveSlide({ ...activeSlide, manifest });
+  }
+
+  function resetActiveLayout() {
+    updateActiveSlide({
+      ...activeSlide,
+      manifest: createManualPresentationManifest(activeSlide.baseTemplateId, activeSlide.id)
+    });
+    setSelectedLayerId(null);
+    setMessage({ tone: "info", text: "Rozvržení slidu je zpět na výchozí šabloně." });
   }
 
   async function saveLongTerm() {
@@ -375,8 +430,6 @@ export function ManualPresentationStudio({
     }
   }
 
-  /** 409: kolega mezitím uložil novou verzi. Úpravy zůstávají v editoru,
-   *  aktivní verze se posune na nejnovější, aby další uložení prošlo. */
   async function recoverFromConflict() {
     const refreshed = await fetchPresentationList();
     if (refreshed) {
@@ -418,7 +471,7 @@ export function ManualPresentationStudio({
       const next = createNewDocument(initialDocument, document.locationId, document.canteenId);
       setDocument(next);
       setActiveSaved(null);
-      setActiveSlideId(next.slides[0]!.id);
+      selectSlide(next.slides[0]!.id);
       setDirty(false);
       setMessage({ tone: "ok", text: "Prezentace je archivovaná, historie zůstala zachovaná." });
     } catch (error) {
@@ -439,10 +492,7 @@ export function ManualPresentationStudio({
       if (nodes.length !== renderModel.deck.slides.length) {
         throw new Error("Exportní náhled není připravený.");
       }
-      const [{ toPng }, { jsPDF }] = await Promise.all([
-        import("html-to-image"),
-        import("jspdf")
-      ]);
+      const [{ toPng }, { jsPDF }] = await Promise.all([import("html-to-image"), import("jspdf")]);
       const pdf = new jsPDF({
         orientation: "landscape",
         unit: "px",
@@ -477,7 +527,6 @@ export function ManualPresentationStudio({
     }
   }
 
-  /** MP4 smyčka ve stejném designu jako TV — worker renderuje z uložené verze. */
   async function startMp4Render() {
     if (!canPersist) {
       setMessage({
@@ -500,10 +549,7 @@ export function ManualPresentationStudio({
       const response = await fetch("/api/render-jobs", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          deckVersionId: activeSaved.deckVersionId,
-          jobType: "render-final"
-        })
+        body: JSON.stringify({ deckVersionId: activeSaved.deckVersionId, jobType: "render-final" })
       });
       const body = (await response.json().catch(() => null)) as
         | (RenderJobPayload & { error?: string })
@@ -522,7 +568,6 @@ export function ManualPresentationStudio({
     }
   }
 
-  /** AI návrh obsahu aktivního slidu — vyplní kolonky, člověk pak upraví. */
   async function generateActiveSlide() {
     if (generatingSlide) return;
     setGeneratingSlide(true);
@@ -566,7 +611,6 @@ export function ManualPresentationStudio({
     }
   }
 
-  /** AI fotka konkrétní položky — vygeneruje, uloží do knihovny a přiřadí. */
   async function generatePhotoForItem(itemId: string) {
     const item = activeSlide.items.find((candidate) => candidate.id === itemId);
     if (!item || isBlankManualItem(item)) {
@@ -624,15 +668,19 @@ export function ManualPresentationStudio({
     setPreviewOpen(true);
   }
 
+  const saveDisabled = saving || !canPersist || (!dirty && Boolean(activeSaved));
+  const renderActive = Boolean(renderJob && ACTIVE_RENDER_STATUSES.has(renderJob.status));
+
   return (
     <div className="manual-presentation-studio">
       <header className="manual-presentation-head">
         <div>
-          <p className="eyebrow">Ruční prezentace</p>
-          <h1 className="page-title">Slidy denní smyčky, vyplněné ručně</h1>
+          <p className="eyebrow">Prezentace pro TV</p>
+          <h1 className="page-title">Postavte si slidy denní smyčky</h1>
           <p className="page-copy">
-            Vyberte typ slidu a vyplňte jeho kolonky — nevyplněné se na slidu schovají.
-            Výsledek uložíte jednorázově do PDF, nebo dlouhodobě jako verzi.
+            Vyplňte obsah, přepněte na <strong>Rozvržení</strong> a prvky si přetáhněte, kam
+            chcete. Náhled je přesně to, co poběží na TV. Uložíte do PDF, nebo dlouhodobě jako
+            verzi a necháte vyrenderovat MP4 smyčku.
           </p>
         </div>
         <div className="manual-head-actions">
@@ -650,11 +698,11 @@ export function ManualPresentationStudio({
             ) : (
               <Download aria-hidden="true" size={19} />
             )}
-            Jednorázové PDF
+            PDF
           </button>
           <button
             className="button"
-            disabled={renderStarting || Boolean(renderJob && ACTIVE_RENDER_STATUSES.has(renderJob.status))}
+            disabled={renderStarting || renderActive}
             onClick={() => void startMp4Render()}
             title="Vygeneruje MP4 smyčku pro TV z dlouhodobě uložené verze."
             type="button"
@@ -666,12 +714,7 @@ export function ManualPresentationStudio({
             )}
             MP4 video
           </button>
-          <button
-            className="button primary"
-            disabled={saving || !canPersist || (!dirty && Boolean(activeSaved))}
-            onClick={() => void saveLongTerm()}
-            type="button"
-          >
+          <button className="button primary" disabled={saveDisabled} onClick={() => void saveLongTerm()} type="button">
             {saving ? (
               <Loader2 aria-hidden="true" className="spin" size={19} />
             ) : (
@@ -723,12 +766,7 @@ export function ManualPresentationStudio({
           {renderJob.status === "failed" || renderJob.status === "canceled" ? (
             <span>Render videa selhal{renderJob.error ? `: ${renderJob.error}` : "."}</span>
           ) : null}
-          <button
-            aria-label="Skrýt stav renderu"
-            className="icon-button"
-            onClick={() => setRenderJob(null)}
-            type="button"
-          >
+          <button aria-label="Skrýt stav renderu" className="icon-button" onClick={() => setRenderJob(null)} type="button">
             <X aria-hidden="true" size={16} />
           </button>
         </div>
@@ -837,12 +875,7 @@ export function ManualPresentationStudio({
                   <div className="manual-slide-picker card" role="menu">
                     <p className="eyebrow">Jaký slide přidat?</p>
                     {manualPresentationLayouts.map((layout) => (
-                      <button
-                        key={layout.id}
-                        onClick={() => addSlide(layout.id)}
-                        role="menuitem"
-                        type="button"
-                      >
+                      <button key={layout.id} onClick={() => addSlide(layout.id)} role="menuitem" type="button">
                         <strong>{layout.label}</strong>
                         <span>{layout.description}</span>
                       </button>
@@ -857,7 +890,7 @@ export function ManualPresentationStudio({
               <button
                 className={`manual-slide-thumb ${slide.id === activeSlide.id ? "active" : ""}`}
                 key={slide.id}
-                onClick={() => setActiveSlideId(slide.id)}
+                onClick={() => selectSlide(slide.id)}
                 type="button"
               >
                 <span>{index + 1}</span>
@@ -907,34 +940,77 @@ export function ManualPresentationStudio({
 
         <main className="manual-stage-column">
           <div className="manual-stage-head">
-            <strong>
-              Slide {activeSlideIndex + 1}/{document.slides.length} ·{" "}
-              {getManualPresentationLayout(activeSlide.baseTemplateId).label}
-            </strong>
-            <span className="manual-stage-hint">Náhled je přesně to, co poběží na TV.</span>
+            <div className="prez-mode-switch" role="tablist" aria-label="Režim úprav">
+              <button
+                aria-selected={mode === "content"}
+                className={`prez-mode-option ${mode === "content" ? "active" : ""}`}
+                onClick={() => changeMode("content")}
+                role="tab"
+                type="button"
+              >
+                <Pencil aria-hidden="true" size={16} /> Obsah
+              </button>
+              <button
+                aria-selected={mode === "layout"}
+                className={`prez-mode-option ${mode === "layout" ? "active" : ""}`}
+                onClick={() => changeMode("layout")}
+                role="tab"
+                type="button"
+              >
+                <Move aria-hidden="true" size={16} /> Rozvržení
+              </button>
+            </div>
+            <span className="manual-stage-hint">
+              {mode === "layout"
+                ? "Chytněte prvek a přetáhněte ho. Alt = volný pohyb."
+                : "Náhled je přesně to, co poběží na TV."}
+            </span>
           </div>
           <div className="manual-stage card">
-            <ScaledTvFrame>
+            <ScaledTvFrame
+              overlay={
+                mode === "layout" ? (
+                  <LayerEditorOverlay
+                    manifest={activeSlide.manifest}
+                    onManifestChange={updateActiveManifest}
+                    onSelectLayer={setSelectedLayerId}
+                    sectionCounts={sectionCounts}
+                    selectedLayerId={selectedLayerId}
+                  />
+                ) : undefined
+              }
+            >
               <TvComposition
                 activeSlideId={activeSlide.id}
-                deck={renderModel.deck}
+                deck={stageDeck}
                 menu={renderModel.menu}
+                showSafeArea={mode === "layout"}
               />
             </ScaledTvFrame>
           </div>
         </main>
 
-        <ManualPresentationInspector
-          assetUrls={assetUrls}
-          generatingPhotoId={generatingPhotoId}
-          generatingSlide={generatingSlide}
-          onChangeLayout={changeSlideLayout}
-          onGeneratePhoto={(itemId) => void generatePhotoForItem(itemId)}
-          onGenerateSlide={() => void generateActiveSlide()}
-          onRequestPhoto={setPhotoTargetItemId}
-          onSlideChange={updateActiveSlide}
-          slide={activeSlide}
-        />
+        {mode === "content" ? (
+          <ContentInspector
+            assetUrls={assetUrls}
+            generatingPhotoId={generatingPhotoId}
+            generatingSlide={generatingSlide}
+            onChangeLayout={changeSlideLayout}
+            onGeneratePhoto={(itemId) => void generatePhotoForItem(itemId)}
+            onGenerateSlide={() => void generateActiveSlide()}
+            onRequestPhoto={setPhotoTargetItemId}
+            onSlideChange={updateActiveSlide}
+            slide={activeSlide}
+          />
+        ) : (
+          <LayoutInspector
+            manifest={activeSlide.manifest}
+            onManifestChange={updateActiveManifest}
+            onResetLayout={resetActiveLayout}
+            onSelectLayer={setSelectedLayerId}
+            selectedLayerId={selectedLayerId}
+          />
+        )}
       </div>
 
       <div aria-hidden="true" className="manual-export-root">
@@ -959,11 +1035,7 @@ export function ManualPresentationStudio({
               </button>
             </header>
             <ScaledTvFrame>
-              <TvComposition
-                activeSlideId={previewSlideId}
-                deck={renderModel.deck}
-                menu={renderModel.menu}
-              />
+              <TvComposition activeSlideId={previewSlideId} deck={renderModel.deck} menu={renderModel.menu} />
             </ScaledTvFrame>
             <div className="manual-preview-controls">
               {renderModel.deck.slides.map((slide, index) => (
@@ -1014,7 +1086,6 @@ export function ManualPresentationStudio({
 /**
  * AI návrh (sekce → položky) namapuje na pevné sloty slidu: zachová id kolonek,
  * přepíše obsah, přebytek přes kapacitu zahodí a nevyplněné sloty vyčistí.
- * Fotky se při generování obsahu ruší — jídlo se změnilo, stará fotka by neseděla.
  */
 function applyGeneratedToSlide(
   slide: ManualPresentationSlide,

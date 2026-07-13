@@ -4,7 +4,7 @@ import {
   createManualPresentationSlideItems,
   type ManualPresentationDocument
 } from "@masico/shared";
-import { ManualPresentationStudio } from "@/components/ManualPresentationStudio";
+import { PrezentaceStudio } from "@/components/presentation/PrezentaceStudio";
 import { StudioShell } from "@/components/StudioShell";
 import {
   listManualPresentations,
@@ -60,7 +60,7 @@ export default async function PresentationsPage() {
 
   return (
     <StudioShell access={access} activeSection="presentations">
-      <ManualPresentationStudio
+      <PrezentaceStudio
         canPersist={canPersist}
         canteens={canteens}
         initialDocument={initialDocument}
