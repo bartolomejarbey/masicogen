@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CircleAlert, CircleCheck, Sparkles } from "lucide-react";
 import type { ProductionDashboardSnapshot } from "@/lib/studio-dashboard";
 
@@ -26,9 +27,9 @@ export function AutopilotBanner({ snapshot }: AutopilotBannerProps) {
           </strong>
           <p>Ceny a alergeny přečetl systém z lístku. Před vysíláním je potvrďte.</p>
         </div>
-        <a className="button" href="/tyden">
+        <Link className="button" href="/tyden">
           Zkontrolovat týden
-        </a>
+        </Link>
       </section>
     );
   }

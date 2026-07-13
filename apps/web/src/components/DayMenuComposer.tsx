@@ -303,6 +303,7 @@ export function DayMenuComposer({
         savedAt?: string;
       };
       if (draft.sections) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- jednorázové obnovení rozpracovaného draftu při mountu
         setSections(draft.sections);
       }
       if (draft.durations) {
@@ -1315,6 +1316,7 @@ function DishPhotoModal({ dishName, canteenId, onClose, onPick }: DishPhotoModal
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- načtení fotek při změně jídla; setState běží až v async callbacku
     void loadPhotos(dishName);
   }, [dishName, loadPhotos]);
 
@@ -1418,7 +1420,7 @@ function DishPhotoModal({ dishName, canteenId, onClose, onPick }: DishPhotoModal
     <div className="day-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="photo-title">
       <div className="day-modal wide">
         <div className="day-modal-head">
-          <h2 id="photo-title">Fotka pro „{dishName}"</h2>
+          <h2 id="photo-title">Fotka pro „{dishName}&ldquo;</h2>
           <button className="button compact" onClick={onClose} type="button">
             <X size={18} aria-hidden="true" />
             Zavřít

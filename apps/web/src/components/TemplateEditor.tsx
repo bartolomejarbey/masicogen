@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable react-hooks/refs -- drag refs se čtou jen v pointer event handlerech, ne při renderu */
+
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   brandTokens,
@@ -87,7 +89,7 @@ export function TemplateEditor({
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
 
-  const sampleMenu = useMemo(buildSampleMenu, []);
+  const sampleMenu = useMemo(() => buildSampleMenu(), []);
   const previewDeck = useMemo<DeckManifest>(
     () => ({
       id: "deck-editor-preview",

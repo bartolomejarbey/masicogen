@@ -23,7 +23,9 @@ export function ScaledTvFrame({
   const shellRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const onScaleChangeRef = useRef(onScaleChange);
-  onScaleChangeRef.current = onScaleChange;
+  useEffect(() => {
+    onScaleChangeRef.current = onScaleChange;
+  });
 
   useEffect(() => {
     const shell = shellRef.current;
