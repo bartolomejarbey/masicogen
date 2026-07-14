@@ -4500,28 +4500,30 @@ a {
   color: #6b6560;
 }
 
-/* Výběr celkové délky MP4 smyčky v hlavičce editoru. */
+/* Výběr celkové délky MP4 smyčky — výrazný pill hned u tlačítka Stáhnout MP4. */
 .manual-loop-length {
   display: inline-flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #6b6560;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 6px 0 14px;
+  border: 1px solid rgba(183, 28, 28, 0.35);
+  border-radius: 12px;
+  background: rgba(183, 28, 28, 0.06);
+  font-size: 14px;
+  font-weight: 800;
+  color: #b71c1c;
+  white-space: nowrap;
 }
 .manual-loop-length select {
-  min-height: 40px;
-  padding: 0 10px;
-  border-radius: 10px;
+  min-height: 34px;
+  padding: 0 8px;
+  border-radius: 9px;
   border: 1px solid rgba(0, 0, 0, 0.16);
   background: #fff;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 800;
   color: #191513;
-  text-transform: none;
-  letter-spacing: 0;
 }
 
 /* Kolonka s tlačítkem „vylepšit AI" vpravo (název / popis jídla). */
@@ -5336,19 +5338,25 @@ a {
 .manual-picker-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 59;
+  background: rgba(20, 16, 14, 0.4);
 }
 
+/* Výběr typu slidu = malé centrované okno. Rail má overflow:hidden, takže
+   absolutní popover se ořezával; fixed okno se nikdy neschová. */
 .manual-slide-picker {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 41;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 60;
   display: grid;
-  width: 300px;
+  width: min(380px, 92vw);
+  max-height: 82vh;
+  overflow-y: auto;
   gap: 4px;
-  padding: 10px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+  padding: 14px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
 }
 
 .manual-slide-picker .eyebrow {
