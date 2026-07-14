@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   MANUAL_PRESENTATION_MAX_SLIDES,
   buildManualPresentationRenderModel,
@@ -907,24 +908,32 @@ export function PrezentaceStudio({
               >
                 <Plus aria-hidden="true" size={19} />
               </button>
-              {slidePickerOpen ? (
-                <>
-                  <div
-                    aria-hidden="true"
-                    className="manual-picker-backdrop"
-                    onClick={() => setSlidePickerOpen(false)}
-                  />
-                  <div className="manual-slide-picker card" role="menu">
-                    <p className="eyebrow">Jaký slide přidat?</p>
-                    {manualPresentationLayouts.map((layout) => (
-                      <button key={layout.id} onClick={() => addSlide(layout.id)} role="menuitem" type="button">
-                        <strong>{layout.label}</strong>
-                        <span>{layout.description}</span>
-                      </button>
-                    ))}
-                  </div>
-                </>
-              ) : null}
+              {slidePickerOpen
+                ? createPortal(
+                    <div className="manual-picker-layer" role="presentation">
+                      <div
+                        aria-hidden="true"
+                        className="manual-picker-backdrop"
+                        onClick={() => setSlidePickerOpen(false)}
+                      />
+                      <div className="manual-slide-picker card" role="menu">
+                        <p className="eyebrow">Jaký slide přidat?</p>
+                        {manualPresentationLayouts.map((layout) => (
+                          <button
+                            key={layout.id}
+                            onClick={() => addSlide(layout.id)}
+                            role="menuitem"
+                            type="button"
+                          >
+                            <strong>{layout.label}</strong>
+                            <span>{layout.description}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>,
+                    globalThis.document.body
+                  )
+                : null}
             </div>
           </div>
           <div className="manual-slide-list">

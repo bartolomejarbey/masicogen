@@ -5335,28 +5335,34 @@ a {
   position: relative;
 }
 
-.manual-picker-backdrop {
+/* Výběr typu slidu se vykresluje přes portál do <body> (mimo panel se scrollem
+   i mimo škálovaný náhled), takže se nikdy neschová za prezentaci. */
+.manual-picker-layer {
   position: fixed;
   inset: 0;
-  z-index: 59;
-  background: rgba(20, 16, 14, 0.4);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
 }
 
-/* Výběr typu slidu = malé centrované okno. Rail má overflow:hidden, takže
-   absolutní popover se ořezával; fixed okno se nikdy neschová. */
+.manual-picker-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 16, 14, 0.45);
+}
+
 .manual-slide-picker {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 60;
+  position: relative;
+  z-index: 1;
   display: grid;
   width: min(380px, 92vw);
   max-height: 82vh;
   overflow-y: auto;
   gap: 4px;
   padding: 14px;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
 }
 
 .manual-slide-picker .eyebrow {
