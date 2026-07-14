@@ -24,7 +24,6 @@ import {
   Archive,
   ArrowDown,
   ArrowUp,
-  Clapperboard,
   Copy,
   Download,
   Eye,
@@ -62,15 +61,19 @@ type GeneratedSlideSection = {
 type StudioMessage = { tone: "ok" | "error" | "info"; text: string } | null;
 type EditorMode = "content" | "layout";
 
-type RenderJobPayload = {
-  id: string;
-  status: "queued" | "leased" | "running" | "retrying" | "succeeded" | "failed" | "canceled";
-  progress: number;
-  exportId?: string;
-  error?: string | null;
-};
+const LOOP_LENGTH_PRESETS = [
+  { seconds: 15, label: "15 s" },
+  { seconds: 30, label: "30 s" },
+  { seconds: 60, label: "1 min" },
+  { seconds: 300, label: "5 min" },
+  { seconds: 600, label: "10 min" },
+  { seconds: 900, label: "15 min" },
+  { seconds: 1800, label: "30 min" }
+] as const;
 
-const ACTIVE_RENDER_STATUSES = new Set(["queued", "leased", "running", "retrying"]);
+function formatLoopLabel(seconds: number): string {
+  return seconds < 60 ? `${seconds}s` : `${Math.round(seconds / 60)}min`;
+}
 
 export function PrezentaceStudio({
   initialDocument,
@@ -102,11 +105,12 @@ export function PrezentaceStudio({
   const [previewSlideId, setPreviewSlideId] = useState(activeSlideId);
   const [slidePickerOpen, setSlidePickerOpen] = useState(false);
   const [photoTargetItemId, setPhotoTargetItemId] = useState<string | null>(null);
-  const [renderJob, setRenderJob] = useState<RenderJobPayload | null>(null);
-  const [renderStarting, setRenderStarting] = useState(false);
   const [generatingSlide, setGeneratingSlide] = useState(false);
   const [generatingPhotoId, setGeneratingPhotoId] = useState<string | null>(null);
   const [improvingFieldId, setImprovingFieldId] = useState<string | null>(null);
+  const [loopSeconds, setLoopSeconds] = useState(300);
+  const [mp4Busy, setMp4Busy] = useState(false);
+  const [mp4Progress, setMp4Progress] = useState<string | null>(null);
   const attemptedAssetIds = useRef(new Set<string>());
 
   const activeSlide =
@@ -184,27 +188,6 @@ export function PrezentaceStudio({
       cancelled = true;
     };
   }, [assetUrls, document]);
-
-  // Průběh MP4 renderu se dotahuje z /api/render-jobs, dokud job neskončí.
-  useEffect(() => {
-    if (!renderJob || !ACTIVE_RENDER_STATUSES.has(renderJob.status)) {
-      return;
-    }
-    const timer = window.setInterval(() => {
-      void (async () => {
-        try {
-          const response = await fetch(`/api/render-jobs/${renderJob.id}`);
-          const body = (await response.json().catch(() => null)) as RenderJobPayload | null;
-          if (response.ok && body?.id) {
-            setRenderJob(body);
-          }
-        } catch {
-          // výpadek sítě — stav se dotáhne dalším tikem
-        }
-      })();
-    }, 4000);
-    return () => window.clearInterval(timer);
-  }, [renderJob]);
 
   function commit(next: ManualPresentationDocument) {
     setDocument(next);
@@ -528,44 +511,71 @@ export function PrezentaceStudio({
     }
   }
 
-  async function startMp4Render() {
-    if (!canPersist) {
-      setMessage({
-        tone: "error",
-        text: "Generování videa vyžaduje přihlášenou roli vlastník, admin nebo editor."
-      });
-      return;
-    }
-    if (!activeSaved || dirty) {
-      setMessage({
-        tone: "info",
-        text: "Video se generuje z dlouhodobě uložené verze — nejdřív prezentaci uložte."
-      });
-      return;
-    }
-
-    setRenderStarting(true);
+  /**
+   * Vygeneruje MP4 smyčku PŘÍMO V PROHLÍŽEČI (WebCodecs) a stáhne ji do PC —
+   * žádný server ani TV hardware. Obsluha soubor nahraje do TV.
+   */
+  async function generateAndDownloadMp4() {
+    if (mp4Busy) return;
+    setMp4Busy(true);
     setMessage(null);
+    setMp4Progress("Připravuji…");
     try {
-      const response = await fetch("/api/render-jobs", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ deckVersionId: activeSaved.deckVersionId, jobType: "render-final" })
-      });
-      const body = (await response.json().catch(() => null)) as
-        | (RenderJobPayload & { error?: string })
-        | null;
-      if (!response.ok || !body?.id) {
-        throw new Error(body?.error ?? `Zadání renderu selhalo (${response.status}).`);
+      const [{ generateDeckMp4, webCodecsMp4Supported }] = await Promise.all([
+        import("@/lib/client-mp4")
+      ]);
+      if (!webCodecsMp4Supported()) {
+        throw new Error(
+          "Tento prohlížeč neumí generovat MP4 (WebCodecs). Zkuste Chrome nebo novější Safari."
+        );
       }
-      setRenderJob(body);
+      await documentFontsReady();
+      const nodes = Array.from(
+        globalThis.document.querySelectorAll<HTMLElement>("[data-manual-export-slide]")
+      );
+      if (nodes.length !== renderModel.deck.slides.length || nodes.length === 0) {
+        throw new Error("Náhled slidů není připravený. Zkuste to prosím znovu.");
+      }
+      const fps = renderModel.deck.fps || 30;
+      const slides = renderModel.deck.slides.map((slide, index) => ({
+        node: nodes[index]!,
+        durationSeconds: Math.max(1, Math.round(slide.durationFrames / fps))
+      }));
+      const blob = await generateDeckMp4({
+        slides,
+        totalSeconds: loopSeconds,
+        frameRate: 5,
+        onProgress: (progress) => {
+          const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
+          const label =
+            progress.phase === "capture"
+              ? `Fotím slidy… ${progress.done}/${progress.total}`
+              : progress.phase === "encode"
+                ? `Generuji video… ${pct} %`
+                : "Dokončuji soubor…";
+          setMp4Progress(label);
+        }
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = globalThis.document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${safeFileName(document.name)}-${formatLoopLabel(loopSeconds)}.mp4`;
+      globalThis.document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      setMessage({
+        tone: "ok",
+        text: "MP4 smyčka je stažená do vašeho PC. Nahrajte ji do TV (USB / přehrávač). Nic se neposílá nikam jinam."
+      });
     } catch (error) {
       setMessage({
         tone: "error",
-        text: error instanceof Error ? error.message : "Zadání renderu selhalo."
+        text: error instanceof Error ? error.message : "Generování MP4 selhalo."
       });
     } finally {
-      setRenderStarting(false);
+      setMp4Busy(false);
+      setMp4Progress(null);
     }
   }
 
@@ -711,7 +721,6 @@ export function PrezentaceStudio({
   }
 
   const saveDisabled = saving || !canPersist || (!dirty && Boolean(activeSaved));
-  const renderActive = Boolean(renderJob && ACTIVE_RENDER_STATUSES.has(renderJob.status));
 
   return (
     <div className="manual-presentation-studio">
@@ -720,9 +729,10 @@ export function PrezentaceStudio({
           <p className="eyebrow">Prezentace pro TV</p>
           <h1 className="page-title">Postavte si slidy denní smyčky</h1>
           <p className="page-copy">
-            Vyplňte obsah, přepněte na <strong>Rozvržení</strong> a prvky si přetáhněte, kam
-            chcete. Náhled je přesně to, co poběží na TV. Uložíte do PDF, nebo dlouhodobě jako
-            verzi a necháte vyrenderovat MP4 smyčku.
+            Každý slide má vlastní kolonky (s fotkami i bez — layout se přizpůsobí). Vyplňte
+            obsah, u kolonky můžete kliknout na <strong>AI</strong>, nastavte délku slidů i
+            videa a dejte <strong>Stáhnout MP4</strong>. Soubor si stáhnete do PC a nahrajete
+            do TV — nic se nikam neposílá.
           </p>
         </div>
         <div className="manual-head-actions">
@@ -742,27 +752,41 @@ export function PrezentaceStudio({
             )}
             PDF
           </button>
+          <label className="manual-loop-length" title="Jak dlouhá bude výsledná MP4 smyčka">
+            <span>Délka videa</span>
+            <select
+              disabled={mp4Busy}
+              onChange={(event) => setLoopSeconds(Number(event.target.value))}
+              value={loopSeconds}
+            >
+              {LOOP_LENGTH_PRESETS.map((preset) => (
+                <option key={preset.seconds} value={preset.seconds}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
-            className="button"
-            disabled={renderStarting || renderActive}
-            onClick={() => void startMp4Render()}
-            title="Vygeneruje MP4 smyčku pro TV z dlouhodobě uložené verze."
+            className="button primary"
+            disabled={mp4Busy}
+            onClick={() => void generateAndDownloadMp4()}
+            title="Vygeneruje MP4 smyčku v prohlížeči a stáhne ji do PC. Nahrajete ji do TV."
             type="button"
           >
-            {renderStarting ? (
+            {mp4Busy ? (
               <Loader2 aria-hidden="true" className="spin" size={19} />
             ) : (
-              <Clapperboard aria-hidden="true" size={19} />
+              <Download aria-hidden="true" size={19} />
             )}
-            MP4 video
+            {mp4Busy ? mp4Progress ?? "Generuji…" : "Stáhnout MP4"}
           </button>
-          <button className="button primary" disabled={saveDisabled} onClick={() => void saveLongTerm()} type="button">
+          <button className="button" disabled={saveDisabled} onClick={() => void saveLongTerm()} type="button">
             {saving ? (
               <Loader2 aria-hidden="true" className="spin" size={19} />
             ) : (
               <Save aria-hidden="true" size={19} />
             )}
-            Dlouhodobě uložit
+            Uložit
           </button>
         </div>
       </header>
@@ -783,34 +807,10 @@ export function PrezentaceStudio({
         </div>
       ) : null}
 
-      {renderJob ? (
-        <div
-          className={`manual-render-bar ${renderJob.status === "failed" || renderJob.status === "canceled" ? "error" : ""}`}
-          role="status"
-        >
-          <Clapperboard aria-hidden="true" size={18} />
-          {renderJob.status === "queued" ? (
-            <span>Video je ve frontě — render worker ho zpracuje, jakmile poběží.</span>
-          ) : null}
-          {renderJob.status === "leased" || renderJob.status === "running" || renderJob.status === "retrying" ? (
-            <span>Video se generuje… {Math.round(renderJob.progress)} %</span>
-          ) : null}
-          {renderJob.status === "succeeded" ? (
-            renderJob.exportId ? (
-              <span>
-                Video je hotové.{" "}
-                <a href={`/api/exports/${renderJob.exportId}/download`}>Stáhnout MP4</a>
-              </span>
-            ) : (
-              <span>Render doběhl, ale výsledný soubor se zatím nenašel — zkuste to za chvíli znovu.</span>
-            )
-          ) : null}
-          {renderJob.status === "failed" || renderJob.status === "canceled" ? (
-            <span>Render videa selhal{renderJob.error ? `: ${renderJob.error}` : "."}</span>
-          ) : null}
-          <button aria-label="Skrýt stav renderu" className="icon-button" onClick={() => setRenderJob(null)} type="button">
-            <X aria-hidden="true" size={16} />
-          </button>
+      {mp4Busy ? (
+        <div className="manual-render-bar" role="status">
+          <Loader2 aria-hidden="true" className="spin" size={18} />
+          <span>{mp4Progress ?? "Generuji MP4…"} — nechte prosím okno otevřené.</span>
         </div>
       ) : null}
 

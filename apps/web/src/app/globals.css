@@ -4439,6 +4439,30 @@ a {
   justify-content: center;
 }
 
+/* Výběr celkové délky MP4 smyčky v hlavičce editoru. */
+.manual-loop-length {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b6560;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.manual-loop-length select {
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  color: #191513;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 /* Kolonka s tlačítkem „vylepšit AI" vpravo (název / popis jídla). */
 .manual-field-with-ai {
   display: flex;

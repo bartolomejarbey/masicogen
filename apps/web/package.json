@@ -19,6 +19,7 @@
     "html-to-image": "^1.11.13",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.468.0",
+    "mp4-muxer": "^5.2.2",
     "next": "^16.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
