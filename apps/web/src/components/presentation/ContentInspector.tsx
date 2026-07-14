@@ -26,21 +26,25 @@ export function ContentInspector({
   assetUrls,
   generatingSlide,
   generatingPhotoId,
+  improvingFieldId,
   onSlideChange,
   onChangeLayout,
   onRequestPhoto,
   onGenerateSlide,
-  onGeneratePhoto
+  onGeneratePhoto,
+  onImproveField
 }: {
   slide: ManualPresentationSlide;
   assetUrls: Record<string, string>;
   generatingSlide: boolean;
   generatingPhotoId: string | null;
+  improvingFieldId: string | null;
   onSlideChange: (slide: ManualPresentationSlide) => void;
   onChangeLayout: (layoutId: ManualPresentationLayoutId) => void;
   onRequestPhoto: (itemId: string) => void;
   onGenerateSlide: () => void;
   onGeneratePhoto: (itemId: string) => void;
+  onImproveField: (itemId: string, field: "name" | "description") => void;
 }) {
   const layout = getManualPresentationLayout(slide.baseTemplateId);
 
@@ -112,9 +116,11 @@ export function ContentInspector({
           assetUrls={assetUrls}
           generatingPhotoId={generatingPhotoId}
           group={group}
+          improvingFieldId={improvingFieldId}
           items={slide.items.filter((item) => manualItemSection(item, layout) === group.sectionKey)}
           key={group.sectionKey}
           onGeneratePhoto={onGeneratePhoto}
+          onImproveField={onImproveField}
           onRequestPhoto={onRequestPhoto}
           onUpdateItem={updateItem}
           showPhotos={slideShowsPhotos(slide)}
@@ -179,19 +185,23 @@ function SlotGroupEditor({
   items,
   assetUrls,
   generatingPhotoId,
+  improvingFieldId,
   showPhotos,
   onUpdateItem,
   onRequestPhoto,
-  onGeneratePhoto
+  onGeneratePhoto,
+  onImproveField
 }: {
   group: ManualPresentationSlotGroup;
   items: ManualPresentationItem[];
   assetUrls: Record<string, string>;
   generatingPhotoId: string | null;
+  improvingFieldId: string | null;
   showPhotos: boolean;
   onUpdateItem: (itemId: string, patch: Partial<ManualPresentationItem>) => void;
   onRequestPhoto: (itemId: string) => void;
   onGeneratePhoto: (itemId: string) => void;
+  onImproveField: (itemId: string, field: "name" | "description") => void;
 }) {
   const filled = items.filter((item) => !isBlankManualItem(item)).length;
 
@@ -233,14 +243,30 @@ function SlotGroupEditor({
                   </button>
                 ) : null}
               </div>
-              <input
-                aria-label={`${group.itemLabel} ${index + 1} — název`}
-                className="manual-item-name"
-                maxLength={160}
-                onChange={(event) => onUpdateItem(item.id, { name: event.target.value })}
-                placeholder="Nevyplněné se na slidu schová"
-                value={item.name}
-              />
+              <div className="manual-field-with-ai">
+                <input
+                  aria-label={`${group.itemLabel} ${index + 1} — název`}
+                  className="manual-item-name"
+                  maxLength={160}
+                  onChange={(event) => onUpdateItem(item.id, { name: event.target.value })}
+                  placeholder="Nevyplněné se na slidu schová"
+                  value={item.name}
+                />
+                <button
+                  aria-label={`Vylepšit název pomocí AI`}
+                  className="manual-ai-field"
+                  disabled={improvingFieldId === `${item.id}:name` || !item.name.trim()}
+                  onClick={() => onImproveField(item.id, "name")}
+                  title="Vylepšit název pomocí AI"
+                  type="button"
+                >
+                  {improvingFieldId === `${item.id}:name` ? (
+                    <Loader2 aria-hidden="true" className="spin" size={16} />
+                  ) : (
+                    <Sparkles aria-hidden="true" size={16} />
+                  )}
+                </button>
+              </div>
               {!blank ? (
                 <>
                   <div className="manual-item-row">
@@ -295,14 +321,32 @@ function SlotGroupEditor({
                   {group.description ? (
                     <label>
                       Popis na slidu
-                      <input
-                        maxLength={280}
-                        onChange={(event) =>
-                          onUpdateItem(item.id, { description: event.target.value })
-                        }
-                        placeholder="např. rajčata, mozzarella, bazalka"
-                        value={item.description}
-                      />
+                      <div className="manual-field-with-ai">
+                        <input
+                          maxLength={280}
+                          onChange={(event) =>
+                            onUpdateItem(item.id, { description: event.target.value })
+                          }
+                          placeholder="např. rajčata, mozzarella, bazalka"
+                          value={item.description}
+                        />
+                        <button
+                          aria-label="Vylepšit popis pomocí AI"
+                          className="manual-ai-field"
+                          disabled={
+                            improvingFieldId === `${item.id}:description` || !item.description.trim()
+                          }
+                          onClick={() => onImproveField(item.id, "description")}
+                          title="Vylepšit popis pomocí AI"
+                          type="button"
+                        >
+                          {improvingFieldId === `${item.id}:description` ? (
+                            <Loader2 aria-hidden="true" className="spin" size={16} />
+                          ) : (
+                            <Sparkles aria-hidden="true" size={16} />
+                          )}
+                        </button>
+                      </div>
                     </label>
                   ) : null}
                   {group.photo && showPhotos ? (

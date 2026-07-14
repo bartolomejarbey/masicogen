@@ -1,6 +1,8 @@
 export function formatCzk(amount: number | null) {
   if (amount === null) {
-    return "Cena k ověření";
+    // Nevyplněná cena = na slidu se nic nekreslí (dřív „Cena k ověření"
+    // přetékalo přes alergeny). Obsluha prázdné místo vidí a doplní.
+    return "";
   }
 
   return new Intl.NumberFormat("cs-CZ", {

@@ -766,6 +766,74 @@ function getOpenAIImageSize() {
   return process.env.OPENAI_IMAGE_SIZE ?? DEFAULT_OPENAI_IMAGE_SIZE;
 }
 
+/**
+ * Vylepší JEDNU kolonku (název jídla nebo popis) pro TV lístek. Vrací POUZE
+ * upravený text — žádné vysvětlování. Nevymýšlí nové jídlo, jen uhladí to,
+ * co obsluha napsala (překlepy, velká písmena, čitelnost na TV). Ceny ani
+ * alergeny se tímto netýká.
+ */
+export async function improveFieldText(input: {
+  field: "name" | "description";
+  value: string;
+  context?: string;
+}): Promise<string> {
+  const value = input.value.trim();
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    if (!demoDataEnabled()) {
+      throw new Error("OPENAI_API_KEY is missing.");
+    }
+    // Demo bez klíče: aspoň lehká kosmetika (velké první písmeno, čisté mezery).
+    const cleaned = value.replace(/\s+/g, " ").trim();
+    return cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1) : cleaned;
+  }
+
+  const instruction =
+    input.field === "name"
+      ? "Uprav NÁZEV jídla pro TV jídelní lístek: oprav překlepy a diakritiku, sjednoť velká písmena (první písmeno velké), zkrať zbytečnou vatu, ať se to vejde na jeden řádek. Zachovej význam jídla. Necenzuruj ani nepřidávej ceny a alergeny."
+      : "Uprav POPIS jídla pro TV jídelní lístek: krátce, lákavě, bez klišé, jedna věta. Oprav překlepy a diakritiku. Nepřidávej ceny ani alergeny.";
+
+  const response = await fetch(`${OPENAI_BASE_URL}/responses`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_TEXT_MODEL ?? "gpt-5.4-mini",
+      store: false,
+      input: [
+        {
+          role: "system",
+          content:
+            "Jsi český editor jídelních lístků pro MASI-CO. Vracíš POUZE upravený text kolonky, nic víc — žádné uvozovky, žádné vysvětlování, žádný nový řádek."
+        },
+        {
+          role: "user",
+          content: `${instruction}${input.context ? `\nKontext: ${input.context}` : ""}\n\nText k úpravě: ${value}`
+        }
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI improve-field failed: ${response.status}`);
+  }
+
+  const payload = (await response.json()) as {
+    output_text?: string;
+    output?: Array<{ content?: Array<{ text?: string }> }>;
+  };
+
+  const text =
+    payload.output_text ??
+    payload.output?.flatMap((item) => item.content ?? []).find((item) => item.text)?.text ??
+    "";
+  // Model občas vrátí text v uvozovkách nebo s tečkou navíc — ořízneme.
+  const trimmed = text.trim().replace(/^["„»]+|["“«.]+$/g, "").trim();
+  return trimmed || value;
+}
+
 export async function createAssistantText(message: string) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {

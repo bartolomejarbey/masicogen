@@ -4439,6 +4439,36 @@ a {
   justify-content: center;
 }
 
+/* Kolonka s tlačítkem „vylepšit AI" vpravo (název / popis jídla). */
+.manual-field-with-ai {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+.manual-field-with-ai > input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.manual-ai-field {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  border: 1px solid rgba(183, 28, 28, 0.35);
+  border-radius: 10px;
+  background: rgba(183, 28, 28, 0.08);
+  color: #b71c1c;
+  cursor: pointer;
+}
+.manual-ai-field:hover:not(:disabled) {
+  background: rgba(183, 28, 28, 0.16);
+}
+.manual-ai-field:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .manual-stage {
   overflow: hidden;
   padding: 12px;

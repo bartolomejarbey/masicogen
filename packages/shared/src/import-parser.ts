@@ -113,7 +113,7 @@ function detectSection(line: string) {
 }
 
 function parseMenuLine(line: string, index: number) {
-  const priceMatch = line.match(/(?:^|\s)(\d{2,4})(?:[,.]\d{1,2})?\s*(?:k[cč]|,-)/i);
+  const priceMatch = line.match(/(?:^|\s)(\d{1,4})(?:[,.]\d{1,2})?\s*(?:k[cč]|,-)/i);
   const allergenMatch = line.match(
     /(?:alergeny?|al\.?|obsahuje)\s*[:.]?\s*((?:\d{1,2}\s*[,/ ]?\s*)+)/i
   );

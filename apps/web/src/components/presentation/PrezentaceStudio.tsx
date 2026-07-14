@@ -106,6 +106,7 @@ export function PrezentaceStudio({
   const [renderStarting, setRenderStarting] = useState(false);
   const [generatingSlide, setGeneratingSlide] = useState(false);
   const [generatingPhotoId, setGeneratingPhotoId] = useState<string | null>(null);
+  const [improvingFieldId, setImprovingFieldId] = useState<string | null>(null);
   const attemptedAssetIds = useRef(new Set<string>());
 
   const activeSlide =
@@ -663,6 +664,47 @@ export function PrezentaceStudio({
     }
   }
 
+  async function improveField(itemId: string, field: "name" | "description") {
+    const item = activeSlide.items.find((candidate) => candidate.id === itemId);
+    if (!item) return;
+    const value = (field === "name" ? item.name : item.description) ?? "";
+    if (!value.trim() || improvingFieldId) return;
+    const fieldId = `${itemId}:${field}`;
+    setImprovingFieldId(fieldId);
+    setMessage(null);
+    try {
+      const layout = getManualPresentationLayout(activeSlide.baseTemplateId);
+      const context =
+        field === "description" ? `${item.name} (${layout.label})` : layout.label;
+      const response = await fetch("/api/ai/improve-field", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ field, value, context })
+      });
+      const body = (await response.json().catch(() => null)) as
+        | { text?: string; error?: string }
+        | null;
+      if (!response.ok || !body?.text) {
+        throw new Error(body?.error ?? `Vylepšení selhalo (${response.status}).`);
+      }
+      const improved = body.text;
+      updateActiveSlide({
+        ...activeSlide,
+        items: activeSlide.items.map((candidate) =>
+          candidate.id === itemId ? { ...candidate, [field]: improved } : candidate
+        )
+      });
+      setMessage({ tone: "ok", text: "Kolonku vylepšila AI — text můžete dál ručně upravit." });
+    } catch (error) {
+      setMessage({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Vylepšení kolonky selhalo."
+      });
+    } finally {
+      setImprovingFieldId(null);
+    }
+  }
+
   function openPreview() {
     setPreviewSlideId(activeSlide.id);
     setPreviewOpen(true);
@@ -996,8 +1038,10 @@ export function PrezentaceStudio({
             generatingPhotoId={generatingPhotoId}
             generatingSlide={generatingSlide}
             onChangeLayout={changeSlideLayout}
+            improvingFieldId={improvingFieldId}
             onGeneratePhoto={(itemId) => void generatePhotoForItem(itemId)}
             onGenerateSlide={() => void generateActiveSlide()}
+            onImproveField={(itemId, field) => void improveField(itemId, field)}
             onRequestPhoto={setPhotoTargetItemId}
             onSlideChange={updateActiveSlide}
             slide={activeSlide}
