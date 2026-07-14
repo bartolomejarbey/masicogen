@@ -11,8 +11,8 @@ import {
   Settings,
   Utensils
 } from "lucide-react";
+import Link from "next/link";
 import { demoDeck, demoMenu, formatCzechDate } from "@masico/shared";
-import { DenniPruvodce } from "@/components/DenniPruvodce";
 import { MenuReview } from "@/components/MenuReview";
 import { StatusBadge } from "@/components/StatusBadge";
 import { StudioShell } from "@/components/StudioShell";
@@ -230,11 +230,42 @@ function ProductionHome({
   snapshot: ProductionDashboardSnapshot;
 }) {
   return (
-    <DenniPruvodce
-      canLaunch={canLaunchToday(access.role)}
-      roleLabel={getRoleLabel(access.role)}
-      snapshot={snapshot}
-    />
+    <div className="smycka-home">
+      <header className="pruvodce-head">
+        <div>
+          <p className="pruvodce-datum">Dnes · {formatCzechDate(snapshot.todayIso)}</p>
+          <h1 className="pruvodce-title">Denní smyčka pro TV</h1>
+        </div>
+        <span className="pruvodce-role">{getRoleLabel(access.role)}</span>
+      </header>
+
+      <section className="smycka-card card">
+        <h2>Vytvořte menu jako video a stáhněte si ho do PC</h2>
+        <p className="smycka-lead">
+          V generátoru vyplníte každý slide zvlášť — <strong>Denní menu, Polévky, Hlavní jídla,
+          Pizza dne, Teplý bufet, Dnes navíc</strong> — s fotkami i bez (layout se přizpůsobí).
+          U každé kolonky je tlačítko <strong>AI</strong>. Nastavíte délku slidů i celého videa
+          (15 s až 30 min) a dáte <strong>Stáhnout MP4</strong>. Soubor nahrajete do TV.
+        </p>
+        <ol className="smycka-steps">
+          <li>
+            <span className="smycka-step-num">1</span> Vyplňte slidy (nebo je nechte navrhnout AI)
+          </li>
+          <li>
+            <span className="smycka-step-num">2</span> Nastavte délku a stáhněte MP4
+          </li>
+          <li>
+            <span className="smycka-step-num">3</span> Nahrajte soubor do TV (USB / přehrávač)
+          </li>
+        </ol>
+        <Link className="button primary smycka-cta" href="/prezentace">
+          <Clapperboard aria-hidden="true" size={24} /> Otevřít generátor denní smyčky
+        </Link>
+        <p className="smycka-note">
+          Nic se neposílá na žádnou obrazovku ani do cloudu — video vzniká u vás a stáhne se do PC.
+        </p>
+      </section>
+    </div>
   );
 }
 
@@ -550,14 +581,4 @@ function getRoleLabel(role: StudioAccessRole) {
   };
 
   return labels[role];
-}
-
-function canLaunchToday(role: StudioAccessRole) {
-  return (
-    role === "owner" ||
-    role === "admin" ||
-    role === "editor" ||
-    role === "designer" ||
-    role === "publisher"
-  );
 }
