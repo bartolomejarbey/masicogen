@@ -644,6 +644,62 @@ function overviewMainRow(index: number): TextLayerV2[] {
   ];
 }
 
+/**
+ * Řádek „Denní menu (4 jídla)" — výrazná fotka vlevo, název, cena a alergeny.
+ * Skoro jako přehled, ale jen 4 jídla a s fotkami (přepínatelné na verzi bez fotek).
+ */
+function menuFourRow(index: number): Array<TextLayerV2 | ImageLayerV2 | ShapeLayerV2> {
+  const y = 236 + index * 192;
+  const group = `menu4-${index}`;
+  const layers: Array<TextLayerV2 | ImageLayerV2 | ShapeLayerV2> = [
+    image(`menu4-${index}-photo`, { x: 128, y, w: 268, h: 176, zIndex: 2 }, {
+      binding: itemBinding("mains", index, "photo"),
+      cornerRadius: 18,
+      group
+    }),
+    text(`menu4-${index}-name`, { x: 432, y: y + 12, w: 968, h: 150, zIndex: 2 }, {
+      binding: itemBinding("mains", index, "name"),
+      fontSizePx: 48,
+      fontWeight: 700,
+      lineHeight: 1.08,
+      maxLines: 2,
+      group
+    }),
+    text(`menu4-${index}-price`, { x: 1420, y: y + 18, w: 372, h: 84, zIndex: 2 }, {
+      role: "price",
+      binding: itemBinding("mains", index, "price"),
+      color: brandTokens.ink,
+      align: "right",
+      fontSizePx: 58,
+      fontWeight: 700,
+      maxLines: 1,
+      group
+    }),
+    text(`menu4-${index}-allergens`, { x: 1420, y: y + 118, w: 372, h: 48, zIndex: 2 }, {
+      role: "note",
+      binding: itemBinding("mains", index, "allergens"),
+      color: brandTokens.red,
+      align: "right",
+      fontSizePx: 34,
+      fontStyle: "italic",
+      maxLines: 1,
+      group
+    })
+  ];
+
+  // Jemná linka mezi jídly — rytmus tištěného lístku.
+  if (index < 3) {
+    layers.push(
+      shape(`menu4-${index}-rule`, { x: 128, y: y + 184, w: 1664, h: 2, zIndex: 1 }, {
+        fill: brandTokens.border,
+        group
+      })
+    );
+  }
+
+  return layers;
+}
+
 export const dailyLoopTemplates: TemplateManifestV2[] = [
   {
     schemaVersion: 2,
@@ -917,6 +973,65 @@ export const dailyLoopTemplates: TemplateManifestV2[] = [
       minItems: 0,
       maxItems: 3,
       requirePhotos: "off"
+    }
+  },
+  {
+    schemaVersion: 2,
+    id: "gluten-free",
+    name: "Bezlepková jídla",
+    templateKind: "special",
+    canvas,
+    safeArea,
+    backgroundColor: brandTokens.paper,
+    backgroundGradient: null,
+    backgroundAssetId: null,
+    durationFrames: 240,
+    transition: "fade",
+    layers: [
+      cornerLogo,
+      ...headlinePill("Bezlepková jídla", 760),
+      dateBadge(),
+      ...specialCard(0),
+      ...specialCard(1),
+      ...specialCard(2),
+      ...brandFooter()
+    ],
+    validationRules: {
+      ...dailyLoopRules,
+      maxItemsPerSlide: 3,
+      minItems: 0,
+      maxItems: 3,
+      requirePhotos: "off"
+    }
+  },
+  {
+    schemaVersion: 2,
+    id: "menu-four",
+    name: "Denní menu (4 jídla)",
+    templateKind: "daily_menu",
+    canvas,
+    safeArea,
+    backgroundColor: brandTokens.paper,
+    backgroundGradient: null,
+    backgroundAssetId: null,
+    durationFrames: 360,
+    transition: "fade",
+    layers: [
+      cornerLogo,
+      ...headlinePill("Denní menu", 620),
+      dateBadge(),
+      ...menuFourRow(0),
+      ...menuFourRow(1),
+      ...menuFourRow(2),
+      ...menuFourRow(3),
+      ...brandFooter()
+    ],
+    validationRules: {
+      ...dailyLoopRules,
+      maxItemsPerSlide: 4,
+      minItems: 0,
+      maxItems: 4,
+      requirePhotos: "warn"
     }
   }
 ];

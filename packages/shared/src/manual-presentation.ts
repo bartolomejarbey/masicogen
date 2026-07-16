@@ -24,10 +24,12 @@ export const MANUAL_PRESENTATION_MAX_SLIDES = 12;
  */
 export const manualPresentationLayoutIds = [
   "masico-intro",
+  "menu-four",
   "soups-duo",
   "mains-grid",
   "pizza-day",
   "hot-buffet",
+  "gluten-free",
   "special-day"
 ] as const;
 
@@ -67,6 +69,14 @@ export const manualPresentationLayouts: ManualPresentationLayout[] = [
     ]
   },
   {
+    id: "menu-four",
+    label: "Denní menu (4 jídla)",
+    description: "Čtyři jídla s výraznou fotkou, cenou a alergeny — jako přehled, ale jen 4 jídla. Přepínatelné na verzi bez fotek.",
+    slotGroups: [
+      { sectionKey: "mains", label: "Jídla", itemLabel: "Jídlo", capacity: 4, photo: true, description: false }
+    ]
+  },
+  {
     id: "soups-duo",
     label: "Polévky",
     description: "Dvě velké karty polévek s fotografií, cenou a alergeny.",
@@ -96,6 +106,14 @@ export const manualPresentationLayouts: ManualPresentationLayout[] = [
     description: "Až sedm položek bufetu s cenou a alergeny, bez fotek.",
     slotGroups: [
       { sectionKey: "buffet", label: "Teplý bufet", itemLabel: "Položka", capacity: 7, photo: false, description: false }
+    ]
+  },
+  {
+    id: "gluten-free",
+    label: "Bezlepková jídla",
+    description: "Jedno až tři bezlepková jídla s fotografiemi (vyplňte 1, 2 nebo 3). Přepínatelné na verzi bez fotek.",
+    slotGroups: [
+      { sectionKey: "special", label: "Bezlepková jídla", itemLabel: "Jídlo", capacity: 3, photo: true, description: false }
     ]
   },
   {
@@ -419,6 +437,10 @@ function applyNoPhotoLayout(
       if (layoutId === "mains-grid" && layer.type === "text" && /^main-\d+-name$/.test(layer.id)) {
         return { ...layer, frame: { ...layer.frame, x: 128, w: 1264 } };
       }
+      // Denní menu (4 jídla): název se roztáhne na místo po fotce (čistý seznam).
+      if (layoutId === "menu-four" && layer.type === "text" && /^menu4-\d+-name$/.test(layer.id)) {
+        return { ...layer, frame: { ...layer.frame, x: 128, w: 1264 } };
+      }
       // Polévky: karta se změní na textovou (velký název, výrazná cena, alergeny).
       if (layoutId === "soups-duo") {
         if (layer.type === "shape" && /^soup-\d+-card$/.test(layer.id)) {
@@ -440,8 +462,8 @@ function applyNoPhotoLayout(
           return { ...layer, frame: { ...layer.frame, w: 1664 } };
         }
       }
-      // Dnes navíc: název karty vyplní místo po fotce nahoře.
-      if (layoutId === "special-day") {
+      // Dnes navíc / Bezlepková jídla: název karty vyplní místo po fotce nahoře.
+      if (layoutId === "special-day" || layoutId === "gluten-free") {
         if (layer.type === "text" && /^special-\d+-name$/.test(layer.id)) {
           return { ...layer, fontSizePx: 50, maxLines: 5, frame: { ...layer.frame, y: 300, h: 400 } };
         }
