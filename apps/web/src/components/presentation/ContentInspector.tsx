@@ -14,8 +14,9 @@ import {
   type ManualPresentationSlide,
   type ManualPresentationSlotGroup
 } from "@masico/shared";
-import { Camera, Eraser, ImageOff, Images, Loader2, Sparkles } from "lucide-react";
+import { Camera, Eraser, ImageOff, Images, Loader2, Move, Sparkles } from "lucide-react";
 import Image from "next/image";
+import { useRef, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 
 /**
  * Pravý panel v režimu „Obsah": vyplňování kolonek slidu, přepínač fotek a AI
@@ -431,41 +432,132 @@ function PhotoField({
           ) : null}
         </div>
       </div>
-      {item.photoAssetId ? (
-        <div className="manual-two-columns">
-          <label>
-            Ohnisko vodorovně: {Math.round(item.photoFocalPoint.x * 100)} %
-            <input
-              max={1}
-              min={0}
-              onChange={(event) =>
-                onUpdateItem(item.id, {
-                  photoFocalPoint: { ...item.photoFocalPoint, x: Number(event.target.value) }
-                })
-              }
-              step={0.01}
-              type="range"
-              value={item.photoFocalPoint.x}
-            />
-          </label>
-          <label>
-            Ohnisko svisle: {Math.round(item.photoFocalPoint.y * 100)} %
-            <input
-              max={1}
-              min={0}
-              onChange={(event) =>
-                onUpdateItem(item.id, {
-                  photoFocalPoint: { ...item.photoFocalPoint, y: Number(event.target.value) }
-                })
-              }
-              step={0.01}
-              type="range"
-              value={item.photoFocalPoint.y}
-            />
-          </label>
-        </div>
+      {item.photoAssetId && assetUrls[item.photoAssetId] ? (
+        <FocalPointEditor
+          alt={item.name}
+          focal={item.photoFocalPoint}
+          onChange={(photoFocalPoint) => onUpdateItem(item.id, { photoFocalPoint })}
+          src={assetUrls[item.photoAssetId]}
+        />
       ) : null}
     </>
+  );
+}
+
+/**
+ * Ohnisko fotky tažením — obsluha chytí náhled a posune výřez, kam chce. Náhled
+ * ukazuje přesně to, co uvidí slide (cover crop). Klávesnicí (šipky) i myší,
+ * plus jemné slidery pod náhledem. Blbuvzdorné: hodnota se vždy ořízne na 0–1.
+ */
+function FocalPointEditor({
+  alt,
+  focal,
+  onChange,
+  src
+}: {
+  alt: string;
+  focal: { x: number; y: number };
+  onChange: (focal: { x: number; y: number }) => void;
+  src: string;
+}) {
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const draggingRef = useRef(false);
+
+  const clamp = (value: number) => Math.min(1, Math.max(0, value));
+  const round = (value: number) => Number(clamp(value).toFixed(3));
+
+  function setFromPointer(clientX: number, clientY: number) {
+    const box = boxRef.current;
+    if (!box) return;
+    const rect = box.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    onChange({
+      x: round((clientX - rect.left) / rect.width),
+      y: round((clientY - rect.top) / rect.height)
+    });
+  }
+
+  function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    draggingRef.current = true;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setFromPointer(event.clientX, event.clientY);
+  }
+
+  function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (draggingRef.current) setFromPointer(event.clientX, event.clientY);
+  }
+
+  function stopDragging(event: ReactPointerEvent<HTMLDivElement>) {
+    draggingRef.current = false;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const step = event.shiftKey ? 0.1 : 0.02;
+    const nudge: Record<string, [number, number]> = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step]
+    };
+    const delta = nudge[event.key];
+    if (!delta) return;
+    event.preventDefault();
+    onChange({ x: round(focal.x + delta[0]), y: round(focal.y + delta[1]) });
+  }
+
+  return (
+    <div className="manual-focal">
+      <div
+        aria-label="Ohnisko fotky – táhněte pro nastavení výřezu"
+        aria-valuetext={`${Math.round(focal.x * 100)} % zleva, ${Math.round(focal.y * 100)} % shora`}
+        className="manual-focal-box"
+        onKeyDown={handleKeyDown}
+        onPointerCancel={stopDragging}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={stopDragging}
+        ref={boxRef}
+        role="slider"
+        style={{ backgroundImage: `url("${src}")`, backgroundPosition: `${focal.x * 100}% ${focal.y * 100}%` }}
+        tabIndex={0}
+      >
+        <span
+          className="manual-focal-reticle"
+          style={{ left: `${focal.x * 100}%`, top: `${focal.y * 100}%` }}
+        />
+        <span className="manual-focal-badge">
+          <Move aria-hidden="true" size={14} />
+          Táhněte pro výřez
+        </span>
+      </div>
+      <div className="manual-two-columns">
+        <label>
+          Vodorovně: {Math.round(focal.x * 100)} %
+          <input
+            max={1}
+            min={0}
+            onChange={(event) => onChange({ ...focal, x: round(Number(event.target.value)) })}
+            step={0.01}
+            type="range"
+            value={focal.x}
+          />
+        </label>
+        <label>
+          Svisle: {Math.round(focal.y * 100)} %
+          <input
+            max={1}
+            min={0}
+            onChange={(event) => onChange({ ...focal, y: round(Number(event.target.value)) })}
+            step={0.01}
+            type="range"
+            value={focal.y}
+          />
+        </label>
+      </div>
+    </div>
   );
 }
 
